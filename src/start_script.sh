@@ -30,6 +30,26 @@ mkdir -p "$WORKSPACE_DIR/ComfyUI" \
 # This follows your request to ensure Jupyter has full permissions inside the workspace.
 chmod -R 0777 "$WORKSPACE_DIR" || true
 
+# If the workspace appears empty and a repo URL is provided, clone it so the container
+# can pick up the latest start/download scripts from your GitHub repository at runtime.
+# Provide the repo via GIT_REPO (HTTPS) or GITHUB_REPO (owner/repo) and optional GIT_BRANCH.
+if [ -z "$(ls -A "$WORKSPACE_DIR" 2>/dev/null || true)" ]; then
+  if [ -n "${GIT_REPO-}" ] || [ -n "${GITHUB_REPO-}" ]; then
+    echo "Workspace empty: attempting to clone repository into $WORKSPACE_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || true
+    repo_url="${GIT_REPO-}"
+    if [ -z "$repo_url" ] && [ -n "${GITHUB_REPO-}" ]; then
+      repo_url="https://github.com/${GITHUB_REPO}.git"
+    fi
+    branch="${GIT_BRANCH:-main}"
+    if [ -n "$repo_url" ]; then
+      echo "Cloning $repo_url (branch: $branch)" >> "$LOGDIR/jupyter.log" 2>&1 || true
+      git clone --depth 1 --branch "$branch" "$repo_url" "$WORKSPACE_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || echo "git clone failed" >> "$LOGDIR/jupyter.log" 2>&1 || true
+      # Ensure files are owned and writable
+      chmod -R 0777 "$WORKSPACE_DIR" || true
+    fi
+  fi
+fi
+
 # Start model downloader in background if MODELS is provided
 if [ -n "${MODELS-}" ]; then
   echo "Starting model downloader..." > "$LOGDIR/download.log"
