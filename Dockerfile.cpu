@@ -1,0 +1,59 @@
+# CPU-only Dockerfile for local testing on Ubuntu 22.04
+FROM ubuntu:22.04 as base
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_PREFER_BINARY=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-dev python3-pip \
+    curl ffmpeg git aria2 git-lfs wget vim \
+    libgl1 libglib2.0-0 build-essential gcc ca-certificates && \
+    python3 -m venv /opt/venv && \
+    ln -sf /opt/venv/bin/python /usr/bin/python && \
+    ln -sf /opt/venv/bin/pip /usr/bin/pip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel
+
+# Install CPU PyTorch from official cpu index
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu || true
+
+# Core tooling
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install pyyaml gdown triton comfy-cli jupyterlab jupyterlab-lsp \
+        jupyter-server jupyter-server-terminals ipykernel jupyterlab_code_formatter \
+        huggingface-hub
+
+# Install ComfyUI
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade comfy-cli || true
+RUN /usr/bin/yes | comfy --workspace /ComfyUI install --upgrade || true
+
+FROM base as final
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install opencv-python || true
+
+RUN mkdir -p /ComfyUI/custom_nodes /ComfyUI/workflows /models /downloads
+WORKDIR /ComfyUI/custom_nodes
+
+# Use fetch_nodes.py to clone/pull repos and install their requirements.
+COPY src/default_repos.txt /usr/local/bin/default_repos.txt
+
+COPY workflows/ /ComfyUI/workflows/
+
+# Copy workflows and helper scripts, then attempt to fetch any additional custom node repos
+COPY workflows/ /ComfyUI/workflows/
+COPY src/fetch_nodes.py /usr/local/bin/fetch_nodes.py
+COPY src/start_script.sh /start_script.sh
+COPY src/download_models.sh /download_models.sh
+RUN chmod +x /start_script.sh /download_models.sh /usr/local/bin/fetch_nodes.py /usr/local/bin/default_repos.txt && \
+    python3 /usr/local/bin/fetch_nodes.py --workflows /ComfyUI/workflows --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt --pip /opt/venv/bin/pip || true
+
+EXPOSE 8188 8888
+
+CMD ["/start_script.sh"]
