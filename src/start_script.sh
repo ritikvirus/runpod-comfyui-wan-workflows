@@ -16,6 +16,9 @@ mkdir -p "$WORKSPACE_DIR"
 LOGDIR=${WORKSPACE_DIR}/logs
 mkdir -p "$LOGDIR"
 
+# Ensure log files exist so tail can open them even if no downloader ran
+touch "$LOGDIR/download.log" "$LOGDIR/jupyter.log" "$LOGDIR/comfy.log" || true
+
 # Create standard workspace subfolders (models, downloads, ComfyUI, custom_nodes, workflows)
 mkdir -p "$WORKSPACE_DIR/ComfyUI" \
          "$WORKSPACE_DIR/custom_nodes" \
@@ -123,12 +126,14 @@ PY
 fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   echo "Starting ComfyUI via comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true
-  # Try comfy CLI from venv if available
+  # Try comfy CLI from venv if available; start in background and append logs
   if [ -x "${VENV_BIN-}/comfy" ]; then
-    "${VENV_BIN}/comfy" --workspace /ComfyUI run > "$LOGDIR/comfy.log" 2>&1 || true
+    "${VENV_BIN}/comfy" --workspace /ComfyUI run >> "$LOGDIR/comfy.log" 2>&1 &
   else
-    comfy --workspace /ComfyUI run > "$LOGDIR/comfy.log" 2>&1 || true
+    comfy --workspace /ComfyUI run >> "$LOGDIR/comfy.log" 2>&1 &
   fi
+  # Give comfy a moment to initialize and write logs
+  sleep 4
   # If comfy didn't start a server, try main.py
   if ! grep -q "Serving" "$LOGDIR/comfy.log" 2>/dev/null; then
     if [ -f "/ComfyUI/main.py" ]; then
