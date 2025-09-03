@@ -50,13 +50,20 @@ if [ -z "$(ls -A "$WORKSPACE_DIR" 2>/dev/null || true)" ]; then
   fi
 fi
 
-# Start model downloader in background if MODELS is provided
-if [ -n "${MODELS-}" ]; then
-  echo "Starting model downloader..." > "$LOGDIR/download.log"
-  # Run downloader with environment; prefer workspace-backed downloads directory
-  DOWNLOADS_DIR="$WORKSPACE_DIR/downloads"
-  MODELDOWN_CMD="/download_models.sh"
-  (cd "$WORKSPACE_DIR" && "$MODELDOWN_CMD") > "$LOGDIR/download.log" 2>&1 &
+# Run mandatory downloads on start if requested. This ensures required models are present before Comfy starts.
+MODELDOWN_CMD="/download_models.sh"
+if [ "${MANDATORY_ON_START-}" = "true" ]; then
+  echo "MANDATORY_ON_START=true -> running mandatory downloads synchronously" >> "$LOGDIR/download.log" 2>&1 || true
+  # Run downloader from workspace root so ComfyUI-relative paths resolve correctly
+  (cd "$WORKSPACE_DIR" && "$MODELDOWN_CMD") >> "$LOGDIR/download.log" 2>&1 || echo "Mandatory downloads finished with errors" >> "$LOGDIR/download.log" 2>&1 || true
+else
+  # Start model downloader in background if MODELS is provided
+  if [ -n "${MODELS-}" ]; then
+    echo "Starting model downloader..." > "$LOGDIR/download.log"
+    # Run downloader with environment; prefer workspace-backed downloads directory
+    DOWNLOADS_DIR="$WORKSPACE_DIR/downloads"
+    (cd "$WORKSPACE_DIR" && "$MODELDOWN_CMD") > "$LOGDIR/download.log" 2>&1 &
+  fi
 fi
 
 # Start JupyterLab
@@ -107,6 +114,17 @@ if [ -d "/ComfyUI" ] && [ ! -L "/ComfyUI" ]; then
   ln -s "$COMFY_WS_DIR" /ComfyUI || true
 fi
 
+# Ensure /ComfyUI exists and contains a minimal pyproject so comfy_cli imports don't crash
+if [ ! -d "/ComfyUI" ]; then
+  mkdir -p /ComfyUI || true
+fi
+if [ ! -f "/ComfyUI/pyproject.toml" ]; then
+  cat > /ComfyUI/pyproject.toml <<'PYP'
+[tool.comfy]
+name = "comfy"
+PYP
+fi
+
 if [ -f "/ComfyUI/comfy/model_management.py" ]; then
   echo "Checking if CUDA is available before patching model_management" >> "$LOGDIR/comfy.log" 2>&1 || true
   # Only apply the CPU fallback patch when CUDA is not available.
@@ -143,6 +161,20 @@ try:
 except Exception as e:
   print('patch failed', e)
 PY
+fi
+
+# If ComfyUI main.py is missing, attempt to install via comfy CLI into /ComfyUI
+if [ ! -f "/ComfyUI/main.py" ]; then
+  echo "ComfyUI main.py not present; attempting 'comfy --workspace /ComfyUI install --upgrade'" >> "$LOGDIR/comfy.log" 2>&1 || true
+  if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
+    if [ -x "${VENV_BIN-}/comfy" ]; then
+      (cd /ComfyUI && "${VENV_BIN}/comfy" --workspace /ComfyUI install --upgrade) >> "$LOGDIR/comfy.log" 2>&1 || true
+    else
+      (cd /ComfyUI && comfy --workspace /ComfyUI install --upgrade) >> "$LOGDIR/comfy.log" 2>&1 || true
+    fi
+  else
+    echo "comfy CLI not available to install ComfyUI; will attempt fallback later" >> "$LOGDIR/comfy.log" 2>&1 || true
+  fi
 fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   echo "Starting ComfyUI via comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true
