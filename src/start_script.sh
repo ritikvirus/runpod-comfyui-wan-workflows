@@ -50,15 +50,15 @@ if [ -z "$(ls -A "$WORKSPACE_DIR" 2>/dev/null || true)" ]; then
   fi
 fi
 
-# Run mandatory downloads on start if requested. This ensures required models are present before Comfy starts.
+# Run mandatory downloads on start if requested or default to true on Runpod-like envs.
 MODELDOWN_CMD="/download_models.sh"
-if [ "${MANDATORY_ON_START-}" = "true" ]; then
+if [ "${MANDATORY_ON_START-}" = "true" ] || [ -n "${RUNPOD_POD_ID-}" ]; then
   echo "MANDATORY_ON_START=true -> running mandatory downloads synchronously" >> "$LOGDIR/download.log" 2>&1 || true
   # Run downloader from workspace root so ComfyUI-relative paths resolve correctly
   (cd "$WORKSPACE_DIR" && "$MODELDOWN_CMD") >> "$LOGDIR/download.log" 2>&1 || echo "Mandatory downloads finished with errors" >> "$LOGDIR/download.log" 2>&1 || true
 else
   # Start model downloader in background if MODELS is provided
-  if [ -n "${MODELS-}" ]; then
+  if [ -n "${MODELS-}" ] || [ -n "${MODELS_FILE-}" ]; then
     echo "Starting model downloader..." > "$LOGDIR/download.log"
     # Run downloader with environment; prefer workspace-backed downloads directory
     DOWNLOADS_DIR="$WORKSPACE_DIR/downloads"
@@ -78,6 +78,11 @@ if [ "${PERSIST_VENV-}" = "true" ]; then
     "$VENV_DIR/bin/pip" install --upgrade pip setuptools wheel >> "$LOGDIR/jupyter.log" 2>&1 || true
     # Install minimal runtime tools in the persistent venv so jupyter/comfy cli are available
     "$VENV_DIR/bin/pip" install comfy-cli jupyterlab huggingface-hub || true
+  fi
+  # Ensure ComfyUI python requirements are installed into the persistent venv
+  if [ -f "/ComfyUI/requirements.txt" ]; then
+    echo "Installing ComfyUI requirements into persistent venv" >> "$LOGDIR/jupyter.log" 2>&1 || true
+    "$VENV_DIR/bin/pip" install -r /ComfyUI/requirements.txt >> "$LOGDIR/jupyter.log" 2>&1 || true
   fi
 fi
 
@@ -165,16 +170,58 @@ fi
 
 # If ComfyUI main.py is missing, attempt to install via comfy CLI into /ComfyUI
 if [ ! -f "/ComfyUI/main.py" ]; then
-  echo "ComfyUI main.py not present; attempting 'comfy --workspace /ComfyUI install --upgrade'" >> "$LOGDIR/comfy.log" 2>&1 || true
+  echo "ComfyUI main.py not present; attempting to obtain ComfyUI via git clone or comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true
+
+  # Allow overriding which ComfyUI repo to clone at runtime. Default to the main ComfyUI repo.
+  COMFY_GIT=${COMFY_GIT:-https://github.com/comfyanonymous/ComfyUI.git}
+  if command -v git >/dev/null 2>&1; then
+    echo "Cloning ComfyUI from $COMFY_GIT into /ComfyUI" >> "$LOGDIR/comfy.log" 2>&1 || true
+    rm -rf /ComfyUI || true
+    git clone --depth 1 "$COMFY_GIT" /ComfyUI >> "$LOGDIR/comfy.log" 2>&1 || echo "git clone of ComfyUI failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+    # Install ComfyUI python requirements if present
+    if [ -f "/ComfyUI/requirements.txt" ]; then
+      echo "Installing ComfyUI requirements from /ComfyUI/requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+      if [ -n "${PIP-}" ]; then
+        "$PIP" install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || echo "pip install requirements failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+      else
+        pip install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || echo "pip install requirements failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+      fi
+    fi
+  else
+    echo "git not available; will try comfy CLI install instead" >> "$LOGDIR/comfy.log" 2>&1 || true
+  fi
+
+  # After attempting git clone, if comfy CLI exists, run install --upgrade to ensure components are present
   if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
     if [ -x "${VENV_BIN-}/comfy" ]; then
       (cd /ComfyUI && "${VENV_BIN}/comfy" --workspace /ComfyUI install --upgrade) >> "$LOGDIR/comfy.log" 2>&1 || true
     else
       (cd /ComfyUI && comfy --workspace /ComfyUI install --upgrade) >> "$LOGDIR/comfy.log" 2>&1 || true
     fi
-  else
-    echo "comfy CLI not available to install ComfyUI; will attempt fallback later" >> "$LOGDIR/comfy.log" 2>&1 || true
   fi
+
+  # If we have a workspace repo with fetch_nodes.py, attempt to install custom nodes listed there
+  if [ -f "$WORKSPACE_DIR/src/fetch_nodes.py" ]; then
+    echo "Running workspace fetch_nodes.py to install custom nodes" >> "$LOGDIR/comfy.log" 2>&1 || true
+    # Use workspace pip if available (PIP variable) so installs go into the persistent venv
+    FETCH_PY="$WORKSPACE_DIR/src/fetch_nodes.py"
+    if [ -n "${PIP-}" ]; then
+      python "$FETCH_PY" --workflows "$WORKSPACE_DIR/workflows" --extra-repos-file "$WORKSPACE_DIR/src/default_repos.txt" --pip "$PIP" >> "$LOGDIR/comfy.log" 2>&1 || echo "fetch_nodes.py failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+    else
+      python "$FETCH_PY" --workflows "$WORKSPACE_DIR/workflows" --extra-repos-file "$WORKSPACE_DIR/src/default_repos.txt" >> "$LOGDIR/comfy.log" 2>&1 || echo "fetch_nodes.py failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+    fi
+  else
+    echo "No workspace fetch_nodes.py found at $WORKSPACE_DIR/src/fetch_nodes.py; skipping custom node install" >> "$LOGDIR/comfy.log" 2>&1 || true
+  fi
+fi
+
+# Always attempt to sync/install custom nodes using default repos and workflows, using the selected pip (persistent venv if enabled)
+if [ -n "${PIP-}" ]; then
+  echo "Syncing custom nodes with selected pip ($PIP)" >> "$LOGDIR/comfy.log" 2>&1 || true
+  python3 /usr/local/bin/fetch_nodes.py --workflows "$WORKSPACE_DIR/workflows" --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt --pip "$PIP" >> "$LOGDIR/comfy.log" 2>&1 || true
+else
+  echo "Syncing custom nodes with system python/pip" >> "$LOGDIR/comfy.log" 2>&1 || true
+  python3 /usr/local/bin/fetch_nodes.py --workflows "$WORKSPACE_DIR/workflows" --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt >> "$LOGDIR/comfy.log" 2>&1 || true
 fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   echo "Starting ComfyUI via comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true
@@ -189,9 +236,9 @@ if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   # If comfy didn't start a server, try main.py
   if ! grep -q "Serving" "$LOGDIR/comfy.log" 2>/dev/null; then
     if [ -f "/ComfyUI/main.py" ]; then
-      echo "Fallback: starting ComfyUI via python main.py" >> "$LOGDIR/comfy.log"
+      echo "Fallback: starting ComfyUI via python main.py on 0.0.0.0:8188" >> "$LOGDIR/comfy.log"
       cd /ComfyUI || true
-      "${PYTHON}" main.py >> "$LOGDIR/comfy.log" 2>&1 &
+      "${PYTHON}" main.py --listen 0.0.0.0 --port 8188 >> "$LOGDIR/comfy.log" 2>&1 &
       STARTED=1
     else
       echo "ComfyUI not found at /ComfyUI; container may be misbuilt" >> "$LOGDIR/comfy.log"

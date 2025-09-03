@@ -28,10 +28,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         jupyter-server jupyter-server-terminals ipykernel jupyterlab_code_formatter \
         huggingface-hub
 
-# Install ComfyUI
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade comfy-cli || true
-RUN /usr/bin/yes | comfy --workspace /ComfyUI install --upgrade || true
+# Install ComfyUI via git and install requirements
+RUN git lfs install && \
+    rm -rf /ComfyUI && \
+    git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /ComfyUI && \
+    /opt/venv/bin/pip install -r /ComfyUI/requirements.txt || true
 
 FROM base as final
 ENV PATH="/opt/venv/bin:$PATH"
@@ -46,8 +47,7 @@ COPY src/default_repos.txt /usr/local/bin/default_repos.txt
 
 COPY workflows/ /ComfyUI/workflows/
 
-# Copy workflows and helper scripts, then attempt to fetch any additional custom node repos
-COPY workflows/ /ComfyUI/workflows/
+# Copy helper scripts, then attempt to fetch any additional custom node repos
 COPY src/fetch_nodes.py /usr/local/bin/fetch_nodes.py
 COPY src/start_script.sh /start_script.sh
 COPY src/download_models.sh /download_models.sh

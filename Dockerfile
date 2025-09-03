@@ -26,9 +26,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip setuptools wheel
 
-# Install core ML and tooling. Use PyTorch cu128 wheel from official index.
+# Install core ML and tooling. Use stable PyTorch cu124 wheel.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128 || true
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # Install runtime libraries and CLIs
 RUN --mount=type=cache,target=/root/.cache/pip \
@@ -36,10 +36,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         jupyter-server jupyter-server-terminals ipykernel jupyterlab_code_formatter \
         huggingface-hub
 
-# Install ComfyUI into /ComfyUI workspace
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade comfy-cli || true
-RUN /usr/bin/yes | comfy --workspace /ComfyUI install --upgrade || true
+# Install ComfyUI into /ComfyUI via git and install its requirements
+RUN git lfs install && \
+    rm -rf /ComfyUI && \
+    git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /ComfyUI && \
+    /opt/venv/bin/pip install -r /ComfyUI/requirements.txt
 
 # Final stage where custom nodes and workflows are added
 FROM base AS final

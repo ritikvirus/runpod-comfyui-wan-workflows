@@ -33,3 +33,4 @@ https://github.com/rgthree/comfyui-image-saver.git
 https://github.com/rgthree/comfyui-crystools.git
 https://github.com/comfyanonymous/comfyui_tinyterranodes.git
 https://github.com/ComfyUI-Community/CRT-Nodes.git
+https://github.com/ltdrdata/ComfyUI-Manager.git
