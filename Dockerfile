@@ -64,8 +64,7 @@ COPY workflows/ /ComfyUI/workflows/
 COPY src/fetch_nodes.py /usr/local/bin/fetch_nodes.py
 COPY src/start_script.sh /start_script.sh
 COPY src/download_models.sh /download_models.sh
-RUN chmod +x /start_script.sh /download_models.sh /usr/local/bin/fetch_nodes.py /usr/local/bin/default_repos.txt && \
-    python3 /usr/local/bin/fetch_nodes.py --workflows /ComfyUI/workflows --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt --pip /opt/venv/bin/pip || true
+RUN chmod +x /start_script.sh /download_models.sh /usr/local/bin/fetch_nodes.py /usr/local/bin/default_repos.txt
 
 # Expose ports
 EXPOSE 8188 8888

@@ -30,6 +30,9 @@ mkdir -p "$WORKSPACE_DIR/ComfyUI" \
 # This follows your request to ensure Jupyter has full permissions inside the workspace.
 chmod -R 0777 "$WORKSPACE_DIR" || true
 
+# Ensure current working directory is a valid, persistent path to avoid cwd-related errors in Jupyter/Comfy
+cd "$WORKSPACE_DIR" 2>/dev/null || true
+
 # If the workspace appears empty and a repo URL is provided, clone it so the container
 # can pick up the latest start/download scripts from your GitHub repository at runtime.
 # Provide the repo via GIT_REPO (HTTPS) or GITHUB_REPO (owner/repo) and optional GIT_BRANCH.
@@ -95,6 +98,23 @@ if [ -x "$VENV_DIR/bin/python" ]; then
 else
   PYTHON="$(command -v python || true)"
   PIP="$(command -v pip || true)"
+fi
+
+# Ensure Pillow is available in the active Python environment (ComfyUI requires PIL)
+"${PYTHON}" - <<'PY' 2>/dev/null || true
+try:
+    import PIL  # noqa: F401
+    print('Pillow already present')
+except Exception:
+    raise SystemExit(1)
+PY
+if [ "$?" -ne 0 ]; then
+  echo "Installing Pillow into active venv" >> "$LOGDIR/comfy.log" 2>&1 || true
+  if [ -n "${PIP-}" ]; then
+    "${PIP}" install --no-input --upgrade pillow >> "$LOGDIR/comfy.log" 2>&1 || true
+  else
+    pip install --no-input --upgrade pillow >> "$LOGDIR/comfy.log" 2>&1 || true
+  fi
 fi
 
 echo "Jupyter will use workspace dir: $WORKSPACE_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || true
@@ -226,6 +246,7 @@ fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   echo "Starting ComfyUI via comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true
   # Try comfy CLI from venv if available; start in background and append logs
+  cd /ComfyUI 2>/dev/null || true
   if [ -x "${VENV_BIN-}/comfy" ]; then
     "${VENV_BIN}/comfy" --workspace /ComfyUI run >> "$LOGDIR/comfy.log" 2>&1 &
   else
