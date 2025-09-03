@@ -45,3 +45,5 @@ Files added
 If you want, I can:
 - Add a small GitHub Actions workflow to build the image on x86_64 and push to Docker Hub/Registry.
 - Wire up automatic download of the specific workflows you attached and ensure they are loaded on ComfyUI startup.
+
+
