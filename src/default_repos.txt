@@ -34,3 +34,11 @@ https://github.com/rgthree/comfyui-crystools.git
 https://github.com/comfyanonymous/comfyui_tinyterranodes.git
 https://github.com/ComfyUI-Community/CRT-Nodes.git
 https://github.com/ltdrdata/ComfyUI-Manager.git
+https://github.com/crystian/ComfyUI-Crystools.git
+https://github.com/PGCRT/CRT-Nodes.git
+https://github.com/aegis72/aegisflow_utility_nodes.git
+https://github.com/chibiace/ComfyUI-Chibi-Nodes.git
+https://github.com/giriss/comfy-image-saver.git
+https://github.com/city96/ComfyUI-GGUF.git
+https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git
+https://github.com/TinyTerra/ComfyUI_tinyterraNodes.git
