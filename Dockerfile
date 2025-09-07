@@ -2,7 +2,7 @@
 # NOTE: Do NOT bake tokens into the image. Use build-args or runtime envs.
 
 ARG BASE_IMAGE=nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
-FROM ${BASE_IMAGE} as base
+FROM ${BASE_IMAGE} AS base
 
 # Consolidated environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -55,16 +55,19 @@ RUN mkdir -p /ComfyUI/custom_nodes /ComfyUI/workflows /models /downloads
 WORKDIR /ComfyUI/custom_nodes
 
 # Copy a default repos list and let fetch_nodes.py ensure they're cloned and updated
+# Place default repos and helper scripts into both /usr/local/bin and into a workspace-backed src
 COPY src/default_repos.txt /usr/local/bin/default_repos.txt
+COPY src/default_repos.txt /workspace/src/default_repos.txt
 
-# Copy workflows if present in build context (place your workflow json files in ./workflows when building)
+# Copy workflows into both the image ComfyUI workflows folder and the persistent workspace so they survive restarts
 COPY workflows/ /ComfyUI/workflows/
+COPY workflows/ /workspace/ComfyUI/workflows/
 
-# Copy helper scripts and node fetcher, then run node fetcher (non-fatal)
+# Copy helper scripts and node fetcher into both image bin and workspace
 COPY src/fetch_nodes.py /usr/local/bin/fetch_nodes.py
+COPY src/fetch_nodes.py /workspace/src/fetch_nodes.py
 COPY src/start_script.sh /start_script.sh
-COPY src/download_models.sh /download_models.sh
-RUN chmod +x /start_script.sh /download_models.sh /usr/local/bin/fetch_nodes.py /usr/local/bin/default_repos.txt
+RUN chmod +x /start_script.sh /usr/local/bin/fetch_nodes.py /usr/local/bin/default_repos.txt /workspace/src/default_repos.txt || true
 
 # Expose ports
 EXPOSE 8188 8888

@@ -26,6 +26,17 @@ mkdir -p "$WORKSPACE_DIR/ComfyUI" \
          "$WORKSPACE_DIR/models" \
          "$WORKSPACE_DIR/downloads"
 
+# If workflows were copied into image at build time under /workspace/ComfyUI/workflows, prefer that
+if [ -d "/workspace/ComfyUI/workflows" ]; then
+  echo "Found built-in /workspace/ComfyUI/workflows; syncing into $WORKSPACE_DIR/workflows"
+  cp -a /workspace/ComfyUI/workflows/. "$WORKSPACE_DIR/workflows/" || true
+fi
+
+# If a default_repos file exists in the workspace, prefer it so users can override at runtime
+if [ -f "/workspace/src/default_repos.txt" ]; then
+  cp /workspace/src/default_repos.txt /usr/local/bin/default_repos.txt || true
+fi
+
 # Make workspace world-writable so Jupyter/Comfy running as root or non-root can write.
 # This follows your request to ensure Jupyter has full permissions inside the workspace.
 chmod -R 0777 "$WORKSPACE_DIR" || true
@@ -53,21 +64,48 @@ if [ -z "$(ls -A "$WORKSPACE_DIR" 2>/dev/null || true)" ]; then
   fi
 fi
 
-# Run mandatory downloads on start if requested or default to true on Runpod-like envs.
-MODELDOWN_CMD="/download_models.sh"
-if [ "${MANDATORY_ON_START-}" = "true" ] || [ -n "${RUNPOD_POD_ID-}" ]; then
-  echo "MANDATORY_ON_START=true -> running mandatory downloads synchronously" >> "$LOGDIR/download.log" 2>&1 || true
-  # Run downloader from workspace root so ComfyUI-relative paths resolve correctly
-  (cd "$WORKSPACE_DIR" && "$MODELDOWN_CMD") >> "$LOGDIR/download.log" 2>&1 || echo "Mandatory downloads finished with errors" >> "$LOGDIR/download.log" 2>&1 || true
-else
-  # Start model downloader in background if MODELS is provided
-  if [ -n "${MODELS-}" ] || [ -n "${MODELS_FILE-}" ]; then
-    echo "Starting model downloader..." > "$LOGDIR/download.log"
-    # Run downloader with environment; prefer workspace-backed downloads directory
-    DOWNLOADS_DIR="$WORKSPACE_DIR/downloads"
-    (cd "$WORKSPACE_DIR" && "$MODELDOWN_CMD") > "$LOGDIR/download.log" 2>&1 &
+# Prepare a resolver to fetch the latest download_models.sh dynamically at runtime.
+resolve_download_script() {
+  # 1) Explicit path wins
+  if [ -n "${DOWNLOAD_MODELS_PATH-}" ] && [ -f "$DOWNLOAD_MODELS_PATH" ]; then
+    echo "$DOWNLOAD_MODELS_PATH"; return 0
   fi
-fi
+  # 2) Explicit URL
+  if [ -n "${DOWNLOAD_MODELS_URL-}" ]; then
+    tmp="/tmp/download_models.sh"
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL -o "$tmp" "$DOWNLOAD_MODELS_URL" || return 1
+    else
+      wget -O "$tmp" "$DOWNLOAD_MODELS_URL" || return 1
+    fi
+    chmod +x "$tmp" || true
+    echo "$tmp"; return 0
+  fi
+  # 3) Workspace copy (repo mounted at runtime)
+  if [ -f "$WORKSPACE_DIR/src/download_models.sh" ]; then
+    echo "$WORKSPACE_DIR/src/download_models.sh"; return 0
+  fi
+  # 4) Try raw from a provided GitHub repo
+  if [ -n "${GITHUB_REPO-}" ]; then
+    branch="${GIT_BRANCH:-main}"
+    raw_url="https://raw.githubusercontent.com/${GITHUB_REPO}/${branch}/src/download_models.sh"
+    tmp="/tmp/download_models.sh"
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL -o "$tmp" "$raw_url" || true
+    else
+      wget -O "$tmp" "$raw_url" || true
+    fi
+    if [ -s "$tmp" ]; then
+      chmod +x "$tmp" || true
+      echo "$tmp"; return 0
+    fi
+  fi
+  # 5) As a last resort (not preferred), use image copy if present
+  if [ -f "/download_models.sh" ]; then
+    echo "/download_models.sh"; return 0
+  fi
+  return 1
+}
 
 # Start JupyterLab
 echo "Preparing Python environment and starting JupyterLab..."
@@ -126,18 +164,7 @@ echo "Starting JupyterLab on 0.0.0.0:8888 (notebook-dir=$WORKSPACE_DIR)" >> "$LO
 STARTED=0
 # If ComfyUI is installed but CPU-only environment, patch model_management to avoid calling CUDA when it's not available.
 COMFY_WS_DIR="$WORKSPACE_DIR/ComfyUI"
-# If /ComfyUI exists in image, move or link it into the workspace so ComfyUI state is persisted
-if [ -d "/ComfyUI" ] && [ ! -L "/ComfyUI" ]; then
-  # If workspace ComfyUI is empty, move existing installation into workspace; otherwise keep workspace version
-  if [ -z "$(ls -A "$COMFY_WS_DIR" 2>/dev/null || true)" ]; then
-    echo "Moving existing /ComfyUI contents into workspace ($COMFY_WS_DIR)" >> "$LOGDIR/comfy.log" 2>&1 || true
-    mkdir -p "$COMFY_WS_DIR"
-    # try move, fall back to copy
-    mv /ComfyUI/* "$COMFY_WS_DIR/" 2>/dev/null || cp -a /ComfyUI/* "$COMFY_WS_DIR/" 2>/dev/null || true
-  fi
-  rm -rf /ComfyUI 2>/dev/null || true
-  ln -s "$COMFY_WS_DIR" /ComfyUI || true
-fi
+# Keep ComfyUI installed at /ComfyUI (no workspace relocation), per requirements
 
 # Ensure /ComfyUI exists and contains a minimal pyproject so comfy_cli imports don't crash
 if [ ! -d "/ComfyUI" ]; then
@@ -235,13 +262,56 @@ if [ ! -f "/ComfyUI/main.py" ]; then
   fi
 fi
 
-# Always attempt to sync/install custom nodes using default repos and workflows, using the selected pip (persistent venv if enabled)
+# If ComfyUI is already present, ensure it is fully updated (git fetch/pull and submodules), then re-install requirements if changed.
+if [ -d "/ComfyUI/.git" ]; then
+  echo "Updating existing /ComfyUI from git" >> "$LOGDIR/comfy.log" 2>&1 || true
+  git -C /ComfyUI fetch --all --tags --prune >> "$LOGDIR/comfy.log" 2>&1 || true
+  git -C /ComfyUI pull --rebase --autostash >> "$LOGDIR/comfy.log" 2>&1 || true
+  git -C /ComfyUI submodule sync --recursive >> "$LOGDIR/comfy.log" 2>&1 || true
+  git -C /ComfyUI submodule update --init --recursive >> "$LOGDIR/comfy.log" 2>&1 || true
+  if [ -f "/ComfyUI/requirements.txt" ]; then
+    echo "Re-installing ComfyUI requirements (if updated)" >> "$LOGDIR/comfy.log" 2>&1 || true
+    if [ -n "${PIP-}" ]; then
+      "$PIP" install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || true
+    else
+      pip install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || true
+    fi
+  fi
+fi
+
+# Ensure workflows are present under /ComfyUI/workflows, preferring any workspace-provided ones
+mkdir -p /ComfyUI/workflows || true
+if [ -d "$WORKSPACE_DIR/workflows" ]; then
+  echo "Syncing workspace workflows into /ComfyUI/workflows" >> "$LOGDIR/comfy.log" 2>&1 || true
+  cp -a "$WORKSPACE_DIR/workflows/." /ComfyUI/workflows/ 2>/dev/null || true
+fi
+
+# Always attempt to sync/install custom nodes using default repos and workflows at /ComfyUI, using the selected pip (persistent venv if enabled)
 if [ -n "${PIP-}" ]; then
   echo "Syncing custom nodes with selected pip ($PIP)" >> "$LOGDIR/comfy.log" 2>&1 || true
-  python3 /usr/local/bin/fetch_nodes.py --workflows "$WORKSPACE_DIR/workflows" --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt --pip "$PIP" >> "$LOGDIR/comfy.log" 2>&1 || true
+  python3 /usr/local/bin/fetch_nodes.py --workflows "/ComfyUI/workflows" --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt --pip "$PIP" >> "$LOGDIR/comfy.log" 2>&1 || true
 else
   echo "Syncing custom nodes with system python/pip" >> "$LOGDIR/comfy.log" 2>&1 || true
-  python3 /usr/local/bin/fetch_nodes.py --workflows "$WORKSPACE_DIR/workflows" --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt >> "$LOGDIR/comfy.log" 2>&1 || true
+  python3 /usr/local/bin/fetch_nodes.py --workflows "/ComfyUI/workflows" --target /ComfyUI/custom_nodes --extra-repos-file /usr/local/bin/default_repos.txt >> "$LOGDIR/comfy.log" 2>&1 || true
+fi
+
+# After ComfyUI is fully prepared, resolve and run the model downloader to target /ComfyUI
+MODELDOWN_SCRIPT="$(resolve_download_script || true)"
+if [ -z "$MODELDOWN_SCRIPT" ]; then
+  echo "No download_models.sh available; skipping model downloads" >> "$LOGDIR/download.log" 2>&1 || true
+else
+  export OUTDIR="/ComfyUI"
+  export COMFY_ROOT="/ComfyUI"
+  chmod +x "$MODELDOWN_SCRIPT" 2>/dev/null || true
+  if [ "${MANDATORY_ON_START-}" = "true" ] || [ -n "${RUNPOD_POD_ID-}" ]; then
+    echo "Running mandatory model downloads into /ComfyUI (synchronous)" >> "$LOGDIR/download.log" 2>&1 || true
+    "$MODELDOWN_SCRIPT" >> "$LOGDIR/download.log" 2>&1 || echo "Downloads finished with errors" >> "$LOGDIR/download.log" 2>&1 || true
+  elif [ -n "${MODELS-}" ] || [ -n "${MODELS_FILE-}" ]; then
+    echo "Starting optional model downloads into /ComfyUI (background)" >> "$LOGDIR/download.log" 2>&1 || true
+    "$MODELDOWN_SCRIPT" >> "$LOGDIR/download.log" 2>&1 &
+  else
+    echo "No MODELS or MODELS_FILE provided; skipping optional downloads" >> "$LOGDIR/download.log" 2>&1 || true
+  fi
 fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   echo "Starting ComfyUI via comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true

@@ -133,18 +133,30 @@ def sync_repo(repo_url, target_dir, pip_exec=None):
 
 
 def load_extra_repos(file_path):
+    """
+    Load extra repos from a plain-text file and return a tuple:
+      (unique_repos_list, duplicate_repos_list)
+    This allows the caller to re-run requirement installs for duplicates
+    without throwing errors on repeated clone attempts.
+    """
     repos = []
+    duplicates = []
     if not file_path:
-        return repos
+        return repos, duplicates
     p = Path(file_path)
     if not p.exists():
-        return repos
+        return repos, duplicates
+    seen = set()
     for line in p.read_text().splitlines():
         line = line.strip()
         if not line or line.startswith('#'):
             continue
-        repos.append(line)
-    return repos
+        if line in seen:
+            duplicates.append(line)
+        else:
+            repos.append(line)
+            seen.add(line)
+    return repos, duplicates
 
 
 def main():
@@ -187,12 +199,36 @@ def main():
             log(f"NO REPO MAPPING for cnr_id '{c}' - please add mapping to DEFAULT_MAP or supply via --extra-repos-file")
             missing_map.append(c)
 
-    # process extra repos file if present
-    extra = load_extra_repos(args.extra_repos_file)
+    # process extra repos file if present; handle duplicates gracefully
+    extra, duplicates = load_extra_repos(args.extra_repos_file)
+    processed = set()
     if extra:
-        log(f"Processing extra repos file: {args.extra_repos_file} ({len(extra)} entries)")
+        log(f"Processing extra repos file: {args.extra_repos_file} ({len(extra)} unique entries)")
         for r in extra:
-            sync_repo(r, args.target, pip_exec=pip_exec)
+            if r in processed:
+                log(f"SKIP: already processed {r}")
+                continue
+            if sync_repo(r, args.target, pip_exec=pip_exec):
+                processed.add(r)
+
+    # If duplicates were present in the file, attempt to re-run install steps
+    # (requirements/install.py) for the duplicated entries without attempting to reclone.
+    if duplicates:
+        log(f"Found {len(duplicates)} duplicate entries in extra repos file; re-running installs for them (non-fatal)")
+        for r in duplicates:
+            repo_name = os.path.basename(r).replace('.git', '')
+            repo_dir = os.path.join(args.target, repo_name)
+            if os.path.exists(repo_dir):
+                # Re-run requirements/install.py
+                req = os.path.join(repo_dir, "requirements.txt")
+                if os.path.exists(req):
+                    pip_install(pip_exec, req)
+                install_py = os.path.join(repo_dir, "install.py")
+                if os.path.exists(install_py):
+                    run(f"python3 {shlex.quote(install_py)}", cwd=repo_dir)
+            else:
+                log(f"Duplicate entry {r} not present on disk; attempting full sync")
+                sync_repo(r, args.target, pip_exec=pip_exec)
 
     if missing_map:
         log("Some cnr_ids had no mapping. Please review and add mappings in fetch_nodes.py or pass repo URLs via --extra-repos-file:")
