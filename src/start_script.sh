@@ -85,7 +85,11 @@ resolve_download_script() {
   if [ -f "$WORKSPACE_DIR/src/download_models.sh" ]; then
     echo "$WORKSPACE_DIR/src/download_models.sh"; return 0
   fi
-  # 4) Try raw from a provided GitHub repo
+  # 4) Try raw from a provided GitHub repo, or fallback to a sane default for this image
+  GH_REPO_FALLBACK="ritikvirus/runpod-comfyui-wan-workflows"
+  if [ -z "${GITHUB_REPO-}" ]; then
+    GITHUB_REPO="$GH_REPO_FALLBACK"
+  fi
   if [ -n "${GITHUB_REPO-}" ]; then
     branch="${GIT_BRANCH:-main}"
     raw_url="https://raw.githubusercontent.com/${GITHUB_REPO}/${branch}/src/download_models.sh"
