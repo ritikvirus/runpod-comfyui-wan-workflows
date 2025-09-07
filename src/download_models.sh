@@ -98,17 +98,21 @@ MANDATORY_DOWNLOADS=(
   "ComfyUI/models/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors?download=true|true"
   "ComfyUI/models/unet/Qwen_Image_Edit-Q8_0.gguf|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/unet/Qwen_Image_Edit-Q8_0.gguf?download=true|true"
   "ComfyUI/models/vae/qwen_image_vae.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors?download=true|true"
-  "ComfyUI/models/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors?download=true|true"
+  "/ComfyUI/models/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors?download=true|true"
 )
 
 failures=0
 for entry in "${MANDATORY_DOWNLOADS[@]}"; do
   IFS='|' read -r relpath url need_token <<<"$entry"
-  # Resolve target path: if relpath starts with 'ComfyUI/' or 'models/' treat relative to COMFY_ROOT when COMFY_ROOT contains ComfyUI
-  if [[ "$relpath" == ComfyUI/* ]] && [ -d "$COMFY_ROOT" ]; then
+  # Resolve target path:
+  # - If relpath is absolute (starts with '/'), use it as-is
+  # - If it starts with 'ComfyUI/', resolve under COMFY_ROOT (or OUTDIR fallback)
+  # - Otherwise, resolve relative to COMFY_ROOT
+  if [[ "$relpath" == /* ]]; then
+    target="$relpath"
+  elif [[ "$relpath" == ComfyUI/* ]] && [ -d "$COMFY_ROOT" ]; then
     target="$COMFY_ROOT/${relpath#ComfyUI/}"
   else
-    # If relpath already starts with ComfyUI, but COMFY_ROOT is not a ComfyUI folder, strip and place under OUTDIR
     if [[ "$relpath" == ComfyUI/* ]]; then
       target="$OUTDIR/${relpath#ComfyUI/}"
     else
