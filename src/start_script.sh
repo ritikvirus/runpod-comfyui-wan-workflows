@@ -339,23 +339,25 @@ else
     echo "No MODELS or MODELS_FILE provided; skipping optional downloads" >> "$LOGDIR/download.log" 2>&1 || true
   fi
 fi
+COMFY_HOST="${COMFY_HOST:-0.0.0.0}"
+COMFY_PORT="${COMFY_PORT:-8188}"
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
-  echo "Starting ComfyUI via comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true
+  echo "Starting ComfyUI via comfy CLI (listen=${COMFY_HOST}:${COMFY_PORT})" >> "$LOGDIR/comfy.log" 2>&1 || true
   # Try comfy CLI from venv if available; start in background and append logs
   cd /ComfyUI 2>/dev/null || true
   if [ -x "${VENV_BIN-}/comfy" ]; then
-    "${VENV_BIN}/comfy" --workspace /ComfyUI run >> "$LOGDIR/comfy.log" 2>&1 &
+    "${VENV_BIN}/comfy" --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" >> "$LOGDIR/comfy.log" 2>&1 &
   else
-    comfy --workspace /ComfyUI run >> "$LOGDIR/comfy.log" 2>&1 &
+    comfy --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" >> "$LOGDIR/comfy.log" 2>&1 &
   fi
   # Give comfy a moment to initialize and write logs
   sleep 4
   # If comfy didn't start a server, try main.py
   if ! grep -q "Serving" "$LOGDIR/comfy.log" 2>/dev/null; then
     if [ -f "/ComfyUI/main.py" ]; then
-      echo "Fallback: starting ComfyUI via python main.py on 0.0.0.0:8188" >> "$LOGDIR/comfy.log"
+      echo "Fallback: starting ComfyUI via python main.py on ${COMFY_HOST}:${COMFY_PORT}" >> "$LOGDIR/comfy.log"
       cd /ComfyUI || true
-      "${PYTHON}" main.py --listen 0.0.0.0 --port 8188 >> "$LOGDIR/comfy.log" 2>&1 &
+      "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" >> "$LOGDIR/comfy.log" 2>&1 &
       STARTED=1
     else
       echo "ComfyUI not found at /ComfyUI; container may be misbuilt" >> "$LOGDIR/comfy.log"
@@ -366,7 +368,7 @@ if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
 elif [ -f "/ComfyUI/main.py" ]; then
   echo "Starting ComfyUI via python main.py" >> "$LOGDIR/comfy.log"
   cd /ComfyUI || true
-  "${PYTHON}" main.py > "$LOGDIR/comfy.log" 2>&1 &
+  "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" > "$LOGDIR/comfy.log" 2>&1 &
   STARTED=1
 else
   echo "ComfyUI not found at /ComfyUI; container may be misbuilt" > "$LOGDIR/comfy.log"
