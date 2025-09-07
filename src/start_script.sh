@@ -66,13 +66,18 @@ fi
 
 # Prepare a resolver to fetch the latest download_models.sh dynamically at runtime.
 resolve_download_script() {
+  # local log helper
+  rlog() { echo "$1" >> "$LOGDIR/download.log" 2>&1 || true; }
+
   # 1) Explicit path wins
   if [ -n "${DOWNLOAD_MODELS_PATH-}" ] && [ -f "$DOWNLOAD_MODELS_PATH" ]; then
+    rlog "Using DOWNLOAD_MODELS_PATH=$DOWNLOAD_MODELS_PATH"
     echo "$DOWNLOAD_MODELS_PATH"; return 0
   fi
   # 2) Explicit URL
   if [ -n "${DOWNLOAD_MODELS_URL-}" ]; then
     tmp="/tmp/download_models.sh"
+    rlog "Fetching DOWNLOAD_MODELS_URL=$DOWNLOAD_MODELS_URL -> $tmp"
     if command -v curl >/dev/null 2>&1; then
       curl -fsSL -o "$tmp" "$DOWNLOAD_MODELS_URL" || return 1
     else
@@ -83,6 +88,7 @@ resolve_download_script() {
   fi
   # 3) Workspace copy (repo mounted at runtime)
   if [ -f "$WORKSPACE_DIR/src/download_models.sh" ]; then
+    rlog "Found workspace download_models.sh at $WORKSPACE_DIR/src/download_models.sh"
     echo "$WORKSPACE_DIR/src/download_models.sh"; return 0
   fi
   # 4) Try raw from a provided GitHub repo, or fallback to a sane default for this image
@@ -91,21 +97,37 @@ resolve_download_script() {
     GITHUB_REPO="$GH_REPO_FALLBACK"
   fi
   if [ -n "${GITHUB_REPO-}" ]; then
-    branch="${GIT_BRANCH:-main}"
-    raw_url="https://raw.githubusercontent.com/${GITHUB_REPO}/${branch}/src/download_models.sh"
     tmp="/tmp/download_models.sh"
-    if command -v curl >/dev/null 2>&1; then
-      curl -fsSL -o "$tmp" "$raw_url" || true
-    else
-      wget -O "$tmp" "$raw_url" || true
-    fi
-    if [ -s "$tmp" ]; then
+    for branch_try in "${GIT_BRANCH:-main}" master; do
+      raw_url="https://raw.githubusercontent.com/${GITHUB_REPO}/${branch_try}/src/download_models.sh"
+      rlog "Trying raw GitHub fetch: $raw_url -> $tmp"
+      if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$tmp" "$raw_url" || true
+      else
+        wget -O "$tmp" "$raw_url" || true
+      fi
+      if [ -s "$tmp" ]; then
+        chmod +x "$tmp" || true
+        rlog "Fetched download_models.sh from $raw_url"
+        echo "$tmp"; return 0
+      fi
+    done
+    # As a last resort, clone the repo and copy the script
+    repo_url="https://github.com/${GITHUB_REPO}.git"
+    tmpdir="$(mktemp -d 2>/dev/null || echo /tmp/dl_repo)"
+    branch_clone="${GIT_BRANCH:-main}"
+    rlog "Cloning $repo_url (branch=$branch_clone) to fetch script"
+    git clone --depth 1 --branch "$branch_clone" "$repo_url" "$tmpdir" >> "$LOGDIR/download.log" 2>&1 || true
+    if [ -f "$tmpdir/src/download_models.sh" ]; then
+      cp "$tmpdir/src/download_models.sh" "$tmp" 2>/dev/null || true
       chmod +x "$tmp" || true
+      rlog "Copied download_models.sh from cloned repo"
       echo "$tmp"; return 0
     fi
   fi
   # 5) As a last resort (not preferred), use image copy if present
   if [ -f "/download_models.sh" ]; then
+    rlog "Falling back to image /download_models.sh"
     echo "/download_models.sh"; return 0
   fi
   return 1

@@ -160,8 +160,9 @@ fi
 # Replace commas/semicolons with newlines, then split on newlines and spaces
 normalized=$(printf '%s' "$MODELS" | tr ',' '\n' | tr ';' '\n')
 
-# iterate each non-empty trimmed entry
-echo "$normalized" | while IFS= read -r line || [ -n "$line" ]; do
+# iterate each non-empty trimmed entry; keep loop in current shell to retain counters
+opt_failures=0
+while IFS= read -r line; do
   m_trim=$(echo "$line" | tr -d '\r' | sed 's/^\s*//;s/\s*$//')
   if [ -z "$m_trim" ]; then
     continue
@@ -171,7 +172,7 @@ echo "$normalized" | while IFS= read -r line || [ -n "$line" ]; do
   # If it looks like a huggingface id (owner/model), try snapshot_download
   if echo "$m_trim" | grep -qE '^[^/]+/[^/]+$'; then
     echo "Downloading HF model: $m_trim"
-    python - <<PY
+    python - <<PY || { echo "Failed to download HF model $m_trim (continuing)" >&2; opt_failures=$((opt_failures+1)); }
 from huggingface_hub import snapshot_download
 import os,sys
 m='''$m_trim'''
@@ -193,7 +194,19 @@ PY
       echo "aria2c not found, falling back to curl"
       curl -L --retry 3 -o "$OUTDIR/$(basename "$m_trim")" "$m_trim" || echo "curl failed for $m_trim"
     fi
+    # If file still missing/empty, count as failure but continue
+    if [ ! -s "$OUTDIR/$(basename "$m_trim")" ]; then
+      echo "Failed to download $m_trim (no file saved)" >&2
+      opt_failures=$((opt_failures+1))
+    fi
   fi
-done
+done <<< "$normalized"
 
 echo "Downloads complete"
+
+# If any failures occurred (mandatory or optional), return non-zero so callers can react
+if [ "$failures" -ne 0 ] || [ "${opt_failures:-0}" -ne 0 ]; then
+  echo "Completed with failures: mandatory=$failures optional=${opt_failures:-0}" >&2
+  exit 2
+fi
+exit 0
