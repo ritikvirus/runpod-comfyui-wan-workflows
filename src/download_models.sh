@@ -126,6 +126,7 @@ MANDATORY_DOWNLOADS=(
   "ComfyUI/models/text_encoders/t5xxl_fp16.safetensors|https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors?download=true|true"
   "ComfyUI/models/text_encoders/clip_l.safetensors|https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors?download=true|true"
   "ComfyUI/models/clip_vision/sigclip_vision_patch14_384.safetensors|https://huggingface.co/Comfy-Org/sigclip_vision_384/resolve/main/sigclip_vision_patch14_384.safetensors?download=true|true"
+  "ComfyUI/models/diffusion_models/Wan2_2-T2V-A14B-HIGH_fp8_e4m3fn_scaled_KJ.safetensors|https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/T2V/Wan2_2-T2V-A14B-HIGH_fp8_e4m3fn_scaled_KJ.safetensors?download=true|true"
 )
 
 failures=0
