@@ -81,6 +81,26 @@ echo "Starting mandatory downloads (these are always fetched first)"
 
 # List of mandatory downloads in the format: "<relative-target-path>|<url>|<use_hf_token true|false>"
 # Relative paths are resolved against COMFY_ROOT when prefixed with 'ComfyUI/' or when the user intended the ComfyUI location.
+# MANDATORY_DOWNLOADS=(
+#   "models/diffusion_models/Wan2.2/wan2.2_i2v_high_noise_14B_fp16.safetensors|https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp16.safetensors?download=true|true"
+#   "models/diffusion_models/Wan2.2/wan2.2_i2v_low_noise_14B_fp16.safetensors|https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp16.safetensors?download=true|true"
+#   "models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors|https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors?download=true|true"
+#   "models/vae/wan_2.1_vae.safetensors|https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors?download=true|true"
+#   "models/loras/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_HIGH_fp16.safetensors|https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_HIGH_fp16.safetensors?download=true|true"
+#   "models/loras/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_LOW_fp16.safetensors|https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_LOW_fp16.safetensors?download=true|true"
+#   "models/loras/wan2.2/wan2.2-i2v-high-oral-insertion-v1.0.safetensors|https://huggingface.co/rahul7star/wan2.2Lora/resolve/main/wan2.2/wan2.2-i2v-high-oral-insertion-v1.0.safetensors?download=true|true"
+#   "models/loras/wan2.2/wan2.2-i2v-low-oral-insertion-v1.0.safetensors|https://huggingface.co/rahul7star/wan2.2Lora/resolve/main/wan2.2/wan2.2-i2v-low-oral-insertion-v1.0.safetensors?download=true|true"
+#   "custom_nodes/ComfyUI-Frame-Interpolation/ckpts/rife/rife49.pth|https://huggingface.co/hfmaster/models-moved/resolve/main/rife/rife49.pth?download=true|false"
+#   "ComfyUI/models/diffusion_models/Wan2_2-T2V-A14B-LOW_fp8_e4m3fn_scaled_KJ.safetensors|https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/T2V/Wan2_2-T2V-A14B-LOW_fp8_e4m3fn_scaled_KJ.safetensors?download=true|true"
+#   "ComfyUI/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors|https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors?download=true|true"
+#   "ComfyUI/models/vae/wan_2.1_vae.safetensors|https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors?download=true|true"
+#   "ComfyUI/models/loras/wan/Wan21_T2V_14B_lightx2v_cfg_step_distill_lora_rank32.safetensors|https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan21_T2V_14B_lightx2v_cfg_step_distill_lora_rank32.safetensors?download=true|true"
+#   "ComfyUI/models/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors?download=true|true"
+#   "ComfyUI/models/unet/Qwen_Image_Edit-Q8_0.gguf|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/unet/Qwen_Image_Edit-Q8_0.gguf?download=true|true"
+#   "ComfyUI/models/vae/qwen_image_vae.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors?download=true|true"
+#   "/ComfyUI/models/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors?download=true|true"
+# )
+
 MANDATORY_DOWNLOADS=(
   "models/diffusion_models/Wan2.2/wan2.2_i2v_high_noise_14B_fp16.safetensors|https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp16.safetensors?download=true|true"
   "models/diffusion_models/Wan2.2/wan2.2_i2v_low_noise_14B_fp16.safetensors|https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp16.safetensors?download=true|true"
@@ -99,6 +119,13 @@ MANDATORY_DOWNLOADS=(
   "ComfyUI/models/unet/Qwen_Image_Edit-Q8_0.gguf|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/unet/Qwen_Image_Edit-Q8_0.gguf?download=true|true"
   "ComfyUI/models/vae/qwen_image_vae.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors?download=true|true"
   "/ComfyUI/models/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/loras/Qwen-Image-Lightning-4steps-V1.0.safetensors?download=true|true"
+  "ComfyUI/models/flux/flux1-dev-fp8-e4m3fn.safetensors|https://huggingface.co/Kijai/flux-fp8/resolve/main/flux1-dev-fp8-e4m3fn.safetensors?download=true|true"
+  "ComfyUI/models/flux/flux1-redux-dev.safetensors|https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev/resolve/main/flux1-redux-dev.safetensors?download=true|true"
+  "ComfyUI/models/flux/flux.1_dev-shakker_labs_union.safetensors|https://huggingface.co/Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro-2.0/resolve/main/diffusion_pytorch_model.safetensors?download=true|true"
+  "ComfyUI/models/flux/flux.1_dev-jasperai_control_upscaler.safetensors|https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler/resolve/main/diffusion_pytorch_model.safetensors?download=true|true"
+  "ComfyUI/models/text_encoders/t5xxl_fp16.safetensors|https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors?download=true|true"
+  "ComfyUI/models/text_encoders/clip_l.safetensors|https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors?download=true|true"
+  "ComfyUI/models/clip_vision/sigclip_vision_patch14_384.safetensors|https://huggingface.co/Comfy-Org/sigclip_vision_384/resolve/main/sigclip_vision_patch14_384.safetensors?download=true|true"
 )
 
 failures=0
