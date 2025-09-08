@@ -1,0 +1,6 @@
+# Add any extra Python packages you want installed at container startup, before ComfyUI launches.
+# Example:
+# package_one==1.2.3
+# some-private-package @ git+https://github.com/you/your-repo.git@main#subdirectory=python
+
+

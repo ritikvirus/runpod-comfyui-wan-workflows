@@ -341,6 +341,16 @@ else
 fi
 COMFY_HOST="${COMFY_HOST:-0.0.0.0}"
 COMFY_PORT="${COMFY_PORT:-8188}"
+ 
+# Install optional additional Python requirements from workspace if provided
+if [ -f "$WORKSPACE_DIR/additional_requirements.txt" ]; then
+  echo "Installing additional requirements from $WORKSPACE_DIR/additional_requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+  if [ -n "${PIP-}" ]; then
+    "$PIP" install -r "$WORKSPACE_DIR/additional_requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+  else
+    pip install -r "$WORKSPACE_DIR/additional_requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+  fi
+fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   echo "Starting ComfyUI via comfy CLI (listen=${COMFY_HOST}:${COMFY_PORT})" >> "$LOGDIR/comfy.log" 2>&1 || true
   # Try comfy CLI from venv if available; start in background and append logs
