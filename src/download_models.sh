@@ -106,10 +106,10 @@ MANDATORY_DOWNLOADS=(
   "models/diffusion_models/Wan2.2/wan2.2_i2v_low_noise_14B_fp16.safetensors|https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp16.safetensors?download=true|true"
   "models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors|https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors?download=true|true"
   "models/vae/wan_2.1_vae.safetensors|https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors?download=true|true"
-  "models/loras/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_HIGH_fp16.safetensors|https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_HIGH_fp16.safetensors?download=true|true"
-  "models/loras/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_LOW_fp16.safetensors|https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_LOW_fp16.safetensors?download=true|true"
-  "models/loras/wan2.2/wan2.2-i2v-high-oral-insertion-v1.0.safetensors|https://huggingface.co/rahul7star/wan2.2Lora/resolve/main/wan2.2/wan2.2-i2v-high-oral-insertion-v1.0.safetensors?download=true|true"
-  "models/loras/wan2.2/wan2.2-i2v-low-oral-insertion-v1.0.safetensors|https://huggingface.co/rahul7star/wan2.2Lora/resolve/main/wan2.2/wan2.2-i2v-low-oral-insertion-v1.0.safetensors?download=true|true"
+  "models/loras/Wan2.2-Lightning_I2V-A14B-4steps-lora_HIGH_fp16.safetensors|https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_HIGH_fp16.safetensors?download=true|true"
+  "models/loras/Wan2.2-Lightning_I2V-A14B-4steps-lora_LOW_fp16.safetensors|https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan22-Lightning/Wan2.2-Lightning_I2V-A14B-4steps-lora_LOW_fp16.safetensors?download=true|true"
+  "models/loras/wan2.2-i2v-high-oral-insertion-v1.0.safetensors|https://huggingface.co/rahul7star/wan2.2Lora/resolve/main/wan2.2/wan2.2-i2v-high-oral-insertion-v1.0.safetensors?download=true|true"
+  "models/loras/wan2.2-i2v-low-oral-insertion-v1.0.safetensors|https://huggingface.co/rahul7star/wan2.2Lora/resolve/main/wan2.2/wan2.2-i2v-low-oral-insertion-v1.0.safetensors?download=true|true"
   "custom_nodes/ComfyUI-Frame-Interpolation/ckpts/rife/rife49.pth|https://huggingface.co/hfmaster/models-moved/resolve/main/rife/rife49.pth?download=true|false"
   "ComfyUI/models/diffusion_models/Wan2_2-T2V-A14B-LOW_fp8_e4m3fn_scaled_KJ.safetensors|https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/T2V/Wan2_2-T2V-A14B-LOW_fp8_e4m3fn_scaled_KJ.safetensors?download=true|true"
   "ComfyUI/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors|https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors?download=true|true"
@@ -127,6 +127,12 @@ MANDATORY_DOWNLOADS=(
   "ComfyUI/models/text_encoders/clip_l.safetensors|https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors?download=true|true"
   "ComfyUI/models/clip_vision/sigclip_vision_patch14_384.safetensors|https://huggingface.co/Comfy-Org/sigclip_vision_384/resolve/main/sigclip_vision_patch14_384.safetensors?download=true|true"
   "ComfyUI/models/diffusion_models/Wan2_2-T2V-A14B-HIGH_fp8_e4m3fn_scaled_KJ.safetensors|https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/T2V/Wan2_2-T2V-A14B-HIGH_fp8_e4m3fn_scaled_KJ.safetensors?download=true|true"
+  "/ComfyUI/models/ultralytics/bbox/face_yolov8m.pt|https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt?download=true|true"
+  "/ComfyUI/models/ultralytics/segm/face_yolov8n-seg2_60.pt|https://github.com/hben35096/assets/releases/download/yolo8/face_yolov8n-seg2_60.pt|false"
+  "/ComfyUI/models/controlnet/flux_shakker_labs_union_pro-fp8_e4m3fn.safetensors|https://huggingface.co/Kijai/flux-fp8/resolve/main/flux_shakker_labs_union_pro-fp8_e4m3fn.safetensors?download=true|true"
+  "/ComfyUI/models/controlnet/flux.1-dev-controlnet-upscaler.safetensors|https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler/resolve/main/diffusion_pytorch_model.safetensors?download=true|true"
+  "/ComfyUI/models/vae/ae.safetensors|https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors?download=true|true"
+  "/ComfyUI/models/diffusion_models/flux1-dev-fp8-e4m3fn.safetensors|https://huggingface.co/Kijai/flux-fp8/resolve/main/flux1-dev-fp8-e4m3fn.safetensors?download=true|true"
 )
 
 failures=0
