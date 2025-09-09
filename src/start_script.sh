@@ -133,6 +133,67 @@ resolve_download_script() {
   return 1
 }
 
+# Resolve additional requirements file dynamically from multiple sources
+resolve_additional_requirements() {
+  # local log helper
+  alog() { echo "$1" >> "$LOGDIR/comfy.log" 2>&1 || true; }
+
+  # 1) Explicit path wins
+  if [ -n "${ADDITIONAL_REQUIREMENTS_PATH-}" ] && [ -f "$ADDITIONAL_REQUIREMENTS_PATH" ]; then
+    alog "Using ADDITIONAL_REQUIREMENTS_PATH=$ADDITIONAL_REQUIREMENTS_PATH"
+    echo "$ADDITIONAL_REQUIREMENTS_PATH"; return 0
+  fi
+  # 2) Explicit URL
+  if [ -n "${ADDITIONAL_REQUIREMENTS_URL-}" ]; then
+    tmp="/tmp/additional_requirements.txt"
+    alog "Fetching ADDITIONAL_REQUIREMENTS_URL=$ADDITIONAL_REQUIREMENTS_URL -> $tmp"
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL -o "$tmp" "$ADDITIONAL_REQUIREMENTS_URL" || return 1
+    else
+      wget -O "$tmp" "$ADDITIONAL_REQUIREMENTS_URL" || return 1
+    fi
+    echo "$tmp"; return 0
+  fi
+  # 3) Workspace copy (repo/files mounted at runtime)
+  if [ -f "$WORKSPACE_DIR/additional_requirements.txt" ]; then
+    alog "Found workspace additional_requirements.txt at $WORKSPACE_DIR/additional_requirements.txt"
+    echo "$WORKSPACE_DIR/additional_requirements.txt"; return 0
+  fi
+  # 4) Try raw from a provided GitHub repo, or fallback to this image's default repo
+  GH_REPO_FALLBACK="ritikvirus/runpod-comfyui-wan-workflows"
+  if [ -z "${GITHUB_REPO-}" ]; then
+    GITHUB_REPO="$GH_REPO_FALLBACK"
+  fi
+  if [ -n "${GITHUB_REPO-}" ]; then
+    tmp="/tmp/additional_requirements.txt"
+    for branch_try in "${GIT_BRANCH:-main}" master; do
+      raw_url="https://raw.githubusercontent.com/${GITHUB_REPO}/${branch_try}/additional_requirements.txt"
+      alog "Trying raw GitHub fetch: $raw_url -> $tmp"
+      if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$tmp" "$raw_url" || true
+      else
+        wget -O "$tmp" "$raw_url" || true
+      fi
+      if [ -s "$tmp" ]; then
+        alog "Fetched additional_requirements.txt from $raw_url"
+        echo "$tmp"; return 0
+      fi
+    done
+    # As a last resort, clone the repo and copy the file
+    repo_url="https://github.com/${GITHUB_REPO}.git"
+    tmpdir="$(mktemp -d 2>/dev/null || echo /tmp/additional_reqs_repo)"
+    branch_clone="${GIT_BRANCH:-main}"
+    alog "Cloning $repo_url (branch=$branch_clone) to fetch additional requirements"
+    git clone --depth 1 --branch "$branch_clone" "$repo_url" "$tmpdir" >> "$LOGDIR/comfy.log" 2>&1 || true
+    if [ -f "$tmpdir/additional_requirements.txt" ]; then
+      cp "$tmpdir/additional_requirements.txt" "$tmp" 2>/dev/null || true
+      alog "Copied additional_requirements.txt from cloned repo"
+      echo "$tmp"; return 0
+    fi
+  fi
+  return 1
+}
+
 # Start JupyterLab
 echo "Preparing Python environment and starting JupyterLab..."
 
@@ -342,14 +403,17 @@ fi
 COMFY_HOST="${COMFY_HOST:-0.0.0.0}"
 COMFY_PORT="${COMFY_PORT:-8188}"
  
-# Install optional additional Python requirements from workspace if provided
-if [ -f "$WORKSPACE_DIR/additional_requirements.txt" ]; then
-  echo "Installing additional requirements from $WORKSPACE_DIR/additional_requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+# Install optional additional Python requirements from a resolved source
+ADD_REQ_FILE="$(resolve_additional_requirements || true)"
+if [ -n "$ADD_REQ_FILE" ] && [ -f "$ADD_REQ_FILE" ]; then
+  echo "Installing additional requirements from $ADD_REQ_FILE" >> "$LOGDIR/comfy.log" 2>&1 || true
   if [ -n "${PIP-}" ]; then
-    "$PIP" install -r "$WORKSPACE_DIR/additional_requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+    "$PIP" install -r "$ADD_REQ_FILE" >> "$LOGDIR/comfy.log" 2>&1 || true
   else
-    pip install -r "$WORKSPACE_DIR/additional_requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+    pip install -r "$ADD_REQ_FILE" >> "$LOGDIR/comfy.log" 2>&1 || true
   fi
+else
+  echo "No additional_requirements.txt found to install" >> "$LOGDIR/comfy.log" 2>&1 || true
 fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
   echo "Starting ComfyUI via comfy CLI (listen=${COMFY_HOST}:${COMFY_PORT})" >> "$LOGDIR/comfy.log" 2>&1 || true
