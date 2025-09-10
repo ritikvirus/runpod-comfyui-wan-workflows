@@ -133,7 +133,7 @@ MANDATORY_DOWNLOADS=(
   "/ComfyUI/models/controlnet/flux.1-dev-controlnet-upscaler.safetensors|https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler/resolve/main/diffusion_pytorch_model.safetensors?download=true|true"
   "/ComfyUI/models/vae/ae.safetensors|https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors?download=true|true"
   "/ComfyUI/models/diffusion_models/flux1-dev-fp8-e4m3fn.safetensors|https://huggingface.co/Kijai/flux-fp8/resolve/main/flux1-dev-fp8-e4m3fn.safetensors?download=true|true"
-  "ComfyUI/models/unet/Qwen_Image_Edit-Q8_0.gguf|https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/unet/Qwen_Image_Edit-Q8_0.gguf?download=true|true"
+  "/ComfyUI/models/unet/Qwen_Image_Edit-Q8_0.gguf|https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/resolve/main/Qwen_Image_Edit-Q8_0.gguf?download=true|true"
 )
 
 failures=0
