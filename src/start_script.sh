@@ -201,16 +201,16 @@ echo "Preparing Python environment and starting JupyterLab..."
 VENV_DIR="$WORKSPACE_DIR/.venv"
 if [ "${PERSIST_VENV-}" = "true" ]; then
   if [ ! -x "$VENV_DIR/bin/python" ]; then
-    echo "Creating persistent venv at $VENV_DIR (this may take a while)..." >> "$LOGDIR/jupyter.log" 2>&1 || true
-    python3 -m venv "$VENV_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || true
-    "$VENV_DIR/bin/pip" install --upgrade pip setuptools wheel >> "$LOGDIR/jupyter.log" 2>&1 || true
+    echo "Creating persistent venv at $VENV_DIR (this may take a while)..." | tee -a "$LOGDIR/jupyter.log" 1>/dev/null 2>&1 || true
+    stdbuf -oL -eL python3 -m venv "$VENV_DIR" 2>&1 | tee -a "$LOGDIR/jupyter.log" || true
+    stdbuf -oL -eL "$VENV_DIR/bin/pip" install --upgrade pip setuptools wheel 2>&1 | tee -a "$LOGDIR/jupyter.log" || true
     # Install minimal runtime tools in the persistent venv so jupyter/comfy cli are available
     "$VENV_DIR/bin/pip" install comfy-cli jupyterlab huggingface-hub gdown || true
   fi
   # Ensure ComfyUI python requirements are installed into the persistent venv
   if [ -f "/ComfyUI/requirements.txt" ]; then
-    echo "Installing ComfyUI requirements into persistent venv" >> "$LOGDIR/jupyter.log" 2>&1 || true
-    "$VENV_DIR/bin/pip" install -r /ComfyUI/requirements.txt >> "$LOGDIR/jupyter.log" 2>&1 || true
+    echo "Installing ComfyUI requirements into persistent venv" | tee -a "$LOGDIR/jupyter.log" 1>/dev/null 2>&1 || true
+    stdbuf -oL -eL "$VENV_DIR/bin/pip" install -r /ComfyUI/requirements.txt 2>&1 | tee -a "$LOGDIR/jupyter.log" || true
   fi
 fi
 
@@ -234,11 +234,11 @@ except Exception:
     raise SystemExit(1)
 PY
 if [ "$?" -ne 0 ]; then
-  echo "Installing Pillow into active venv" >> "$LOGDIR/comfy.log" 2>&1 || true
+  echo "Installing Pillow into active venv" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
   if [ -n "${PIP-}" ]; then
-    "${PIP}" install --no-input --upgrade pillow >> "$LOGDIR/comfy.log" 2>&1 || true
+    stdbuf -oL -eL "${PIP}" install --no-input --upgrade pillow 2>&1 | tee -a "$LOGDIR/comfy.log" || true
   else
-    pip install --no-input --upgrade pillow >> "$LOGDIR/comfy.log" 2>&1 || true
+    stdbuf -oL -eL pip install --no-input --upgrade pillow 2>&1 | tee -a "$LOGDIR/comfy.log" || true
   fi
 fi
 
@@ -311,21 +311,21 @@ fi
 
 # If ComfyUI main.py is missing, attempt to install via comfy CLI into /ComfyUI
 if [ ! -f "/ComfyUI/main.py" ]; then
-  echo "ComfyUI main.py not present; attempting to obtain ComfyUI via git clone or comfy CLI" >> "$LOGDIR/comfy.log" 2>&1 || true
+  echo "ComfyUI main.py not present; attempting to obtain ComfyUI via git clone or comfy CLI" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
 
   # Allow overriding which ComfyUI repo to clone at runtime. Default to the main ComfyUI repo.
   COMFY_GIT=${COMFY_GIT:-https://github.com/comfyanonymous/ComfyUI.git}
   if command -v git >/dev/null 2>&1; then
-    echo "Cloning ComfyUI from $COMFY_GIT into /ComfyUI" >> "$LOGDIR/comfy.log" 2>&1 || true
+    echo "Cloning ComfyUI from $COMFY_GIT into /ComfyUI" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
     rm -rf /ComfyUI || true
-    git clone --depth 1 "$COMFY_GIT" /ComfyUI >> "$LOGDIR/comfy.log" 2>&1 || echo "git clone of ComfyUI failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+    stdbuf -oL -eL git clone --depth 1 "$COMFY_GIT" /ComfyUI 2>&1 | tee -a "$LOGDIR/comfy.log" || echo "git clone of ComfyUI failed" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
     # Install ComfyUI python requirements if present
     if [ -f "/ComfyUI/requirements.txt" ]; then
-      echo "Installing ComfyUI requirements from /ComfyUI/requirements.txt" >> "$LOGDIR/comfy.log" 2>&1 || true
+      echo "Installing ComfyUI requirements from /ComfyUI/requirements.txt" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
       if [ -n "${PIP-}" ]; then
-        "$PIP" install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || echo "pip install requirements failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+        stdbuf -oL -eL "$PIP" install -r /ComfyUI/requirements.txt 2>&1 | tee -a "$LOGDIR/comfy.log" || echo "pip install requirements failed" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
       else
-        pip install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || echo "pip install requirements failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+        stdbuf -oL -eL pip install -r /ComfyUI/requirements.txt 2>&1 | tee -a "$LOGDIR/comfy.log" || echo "pip install requirements failed" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
       fi
     fi
   else
@@ -343,13 +343,13 @@ if [ ! -f "/ComfyUI/main.py" ]; then
 
   # If we have a workspace repo with fetch_nodes.py, attempt to install custom nodes listed there
   if [ -f "$WORKSPACE_DIR/src/fetch_nodes.py" ]; then
-    echo "Running workspace fetch_nodes.py to install custom nodes" >> "$LOGDIR/comfy.log" 2>&1 || true
+    echo "Running workspace fetch_nodes.py to install custom nodes" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
     # Use workspace pip if available (PIP variable) so installs go into the persistent venv
     FETCH_PY="$WORKSPACE_DIR/src/fetch_nodes.py"
     if [ -n "${PIP-}" ]; then
-      python "$FETCH_PY" --workflows "$WORKSPACE_DIR/workflows" --extra-repos-file "$WORKSPACE_DIR/src/default_repos.txt" --pip "$PIP" >> "$LOGDIR/comfy.log" 2>&1 || echo "fetch_nodes.py failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+      stdbuf -oL -eL python "$FETCH_PY" --workflows "$WORKSPACE_DIR/workflows" --extra-repos-file "$WORKSPACE_DIR/src/default_repos.txt" --pip "$PIP" 2>&1 | tee -a "$LOGDIR/comfy.log" || echo "fetch_nodes.py failed" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
     else
-      python "$FETCH_PY" --workflows "$WORKSPACE_DIR/workflows" --extra-repos-file "$WORKSPACE_DIR/src/default_repos.txt" >> "$LOGDIR/comfy.log" 2>&1 || echo "fetch_nodes.py failed" >> "$LOGDIR/comfy.log" 2>&1 || true
+      stdbuf -oL -eL python "$FETCH_PY" --workflows "$WORKSPACE_DIR/workflows" --extra-repos-file "$WORKSPACE_DIR/src/default_repos.txt" 2>&1 | tee -a "$LOGDIR/comfy.log" || echo "fetch_nodes.py failed" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
     fi
   else
     echo "No workspace fetch_nodes.py found at $WORKSPACE_DIR/src/fetch_nodes.py; skipping custom node install" >> "$LOGDIR/comfy.log" 2>&1 || true
@@ -358,17 +358,17 @@ fi
 
 # If ComfyUI is already present, ensure it is fully updated (git fetch/pull and submodules), then re-install requirements if changed.
 if [ -d "/ComfyUI/.git" ]; then
-  echo "Updating existing /ComfyUI from git" >> "$LOGDIR/comfy.log" 2>&1 || true
-  git -C /ComfyUI fetch --all --tags --prune >> "$LOGDIR/comfy.log" 2>&1 || true
-  git -C /ComfyUI pull --rebase --autostash >> "$LOGDIR/comfy.log" 2>&1 || true
-  git -C /ComfyUI submodule sync --recursive >> "$LOGDIR/comfy.log" 2>&1 || true
-  git -C /ComfyUI submodule update --init --recursive >> "$LOGDIR/comfy.log" 2>&1 || true
+  echo "Updating existing /ComfyUI from git" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
+  stdbuf -oL -eL git -C /ComfyUI fetch --all --tags --prune 2>&1 | tee -a "$LOGDIR/comfy.log" || true
+  stdbuf -oL -eL git -C /ComfyUI pull --rebase --autostash 2>&1 | tee -a "$LOGDIR/comfy.log" || true
+  stdbuf -oL -eL git -C /ComfyUI submodule sync --recursive 2>&1 | tee -a "$LOGDIR/comfy.log" || true
+  stdbuf -oL -eL git -C /ComfyUI submodule update --init --recursive 2>&1 | tee -a "$LOGDIR/comfy.log" || true
   if [ -f "/ComfyUI/requirements.txt" ]; then
-    echo "Re-installing ComfyUI requirements (if updated)" >> "$LOGDIR/comfy.log" 2>&1 || true
+    echo "Re-installing ComfyUI requirements (if updated)" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
     if [ -n "${PIP-}" ]; then
-      "$PIP" install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || true
+      stdbuf -oL -eL "$PIP" install -r /ComfyUI/requirements.txt 2>&1 | tee -a "$LOGDIR/comfy.log" || true
     else
-      pip install -r /ComfyUI/requirements.txt >> "$LOGDIR/comfy.log" 2>&1 || true
+      stdbuf -oL -eL pip install -r /ComfyUI/requirements.txt 2>&1 | tee -a "$LOGDIR/comfy.log" || true
     fi
   fi
 fi
@@ -413,11 +413,11 @@ COMFY_PORT="${COMFY_PORT:-8188}"
 # Install optional additional Python requirements from a resolved source
 ADD_REQ_FILE="$(resolve_additional_requirements || true)"
 if [ -n "$ADD_REQ_FILE" ] && [ -f "$ADD_REQ_FILE" ]; then
-  echo "Installing additional requirements from $ADD_REQ_FILE" >> "$LOGDIR/comfy.log" 2>&1 || true
+  echo "Installing additional requirements from $ADD_REQ_FILE" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
   if [ -n "${PIP-}" ]; then
-    "$PIP" install -r "$ADD_REQ_FILE" >> "$LOGDIR/comfy.log" 2>&1 || true
+    stdbuf -oL -eL "$PIP" install -r "$ADD_REQ_FILE" 2>&1 | tee -a "$LOGDIR/comfy.log" || true
   else
-    pip install -r "$ADD_REQ_FILE" >> "$LOGDIR/comfy.log" 2>&1 || true
+    stdbuf -oL -eL pip install -r "$ADD_REQ_FILE" 2>&1 | tee -a "$LOGDIR/comfy.log" || true
   fi
 else
   echo "No additional_requirements.txt found to install" >> "$LOGDIR/comfy.log" 2>&1 || true
