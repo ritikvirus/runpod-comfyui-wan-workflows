@@ -246,9 +246,13 @@ fi
 JUPYTER_DIR="/ComfyUI"
 mkdir -p "$JUPYTER_DIR" || true
 echo "Jupyter will use directory: $JUPYTER_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || true
-echo "Starting JupyterLab on 0.0.0.0:8888 (notebook-dir=$JUPYTER_DIR)" >> "$LOGDIR/jupyter.log" 2>&1 || true
+echo "Starting JupyterLab on 0.0.0.0:8888 (notebook-dir=$JUPYTER_DIR)" | tee -a "$LOGDIR/jupyter.log" 1>/dev/null 2>&1 || true
 # Disable token for convenience inside controlled environments like Runpod; remove --ServerApp.token='' if you want a token
-"${PYTHON}" -m jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token='' --LabApp.allow_origin='*' --ServerApp.allow_remote_access=True --NotebookApp.notebook_dir="$JUPYTER_DIR" --allow-root > "$LOGDIR/jupyter.log" 2>&1 &
+stdbuf -oL -eL "${PYTHON}" -m jupyter lab \
+  --ip=0.0.0.0 --port=8888 --no-browser \
+  --ServerApp.token='' --LabApp.allow_origin='*' --ServerApp.allow_remote_access=True \
+  --NotebookApp.notebook_dir="$JUPYTER_DIR" --allow-root 2>&1 | tee -a "$LOGDIR/jupyter.log" &
+JUPYTER_PID=$!
 
 # Start ComfyUI - try comfy CLI first, fall back to main.py
 STARTED=0
@@ -394,11 +398,11 @@ else
   export COMFY_ROOT="/ComfyUI"
   chmod +x "$MODELDOWN_SCRIPT" 2>/dev/null || true
   if [ "${MANDATORY_ON_START-}" = "true" ] || [ -n "${RUNPOD_POD_ID-}" ]; then
-    echo "Running mandatory model downloads into /ComfyUI (synchronous)" >> "$LOGDIR/download.log" 2>&1 || true
-    "$MODELDOWN_SCRIPT" >> "$LOGDIR/download.log" 2>&1 || echo "Downloads finished with errors" >> "$LOGDIR/download.log" 2>&1 || true
+    echo "Running mandatory model downloads into /ComfyUI (synchronous)" | tee -a "$LOGDIR/download.log" 1>/dev/null 2>&1 || true
+    stdbuf -oL -eL "$MODELDOWN_SCRIPT" 2>&1 | tee -a "$LOGDIR/download.log" || echo "Downloads finished with errors" | tee -a "$LOGDIR/download.log" 1>/dev/null 2>&1 || true
   elif [ -n "${MODELS-}" ] || [ -n "${MODELS_FILE-}" ]; then
-    echo "Starting optional model downloads into /ComfyUI (background)" >> "$LOGDIR/download.log" 2>&1 || true
-    "$MODELDOWN_SCRIPT" >> "$LOGDIR/download.log" 2>&1 &
+    echo "Starting optional model downloads into /ComfyUI (background)" | tee -a "$LOGDIR/download.log" 1>/dev/null 2>&1 || true
+    stdbuf -oL -eL "$MODELDOWN_SCRIPT" 2>&1 | tee -a "$LOGDIR/download.log" &
   else
     echo "No MODELS or MODELS_FILE provided; skipping optional downloads" >> "$LOGDIR/download.log" 2>&1 || true
   fi
@@ -419,14 +423,15 @@ else
   echo "No additional_requirements.txt found to install" >> "$LOGDIR/comfy.log" 2>&1 || true
 fi
 if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
-  echo "Starting ComfyUI via comfy CLI (listen=${COMFY_HOST}:${COMFY_PORT})" >> "$LOGDIR/comfy.log" 2>&1 || true
+  echo "Starting ComfyUI via comfy CLI (listen=${COMFY_HOST}:${COMFY_PORT})" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
   # Try comfy CLI from venv if available; start in background and append logs
   cd /ComfyUI 2>/dev/null || true
   if [ -x "${VENV_BIN-}/comfy" ]; then
-    "${VENV_BIN}/comfy" --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" >> "$LOGDIR/comfy.log" 2>&1 &
+    stdbuf -oL -eL "${VENV_BIN}/comfy" --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
   else
-    comfy --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" >> "$LOGDIR/comfy.log" 2>&1 &
+    stdbuf -oL -eL comfy --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
   fi
+  COMFY_PID=$!
   # Give comfy a moment to initialize and write logs
   sleep 4
   # If comfy didn't start a server, try main.py
@@ -434,7 +439,8 @@ if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
     if [ -f "/ComfyUI/main.py" ]; then
       echo "Fallback: starting ComfyUI via python main.py on ${COMFY_HOST}:${COMFY_PORT}" >> "$LOGDIR/comfy.log"
       cd /ComfyUI || true
-      "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" >> "$LOGDIR/comfy.log" 2>&1 &
+      stdbuf -oL -eL "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
+      COMFY_PID=$!
       STARTED=1
     else
       echo "ComfyUI not found at /ComfyUI; container may be misbuilt" >> "$LOGDIR/comfy.log"
@@ -445,14 +451,14 @@ if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
 elif [ -f "/ComfyUI/main.py" ]; then
   echo "Starting ComfyUI via python main.py" >> "$LOGDIR/comfy.log"
   cd /ComfyUI || true
-  "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" > "$LOGDIR/comfy.log" 2>&1 &
+  stdbuf -oL -eL "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
+  COMFY_PID=$!
   STARTED=1
 else
   echo "ComfyUI not found at /ComfyUI; container may be misbuilt" > "$LOGDIR/comfy.log"
 fi
 
-# Tail logs to keep container alive and to surface logs in docker logs
+# Keep container alive by waiting on Jupyter and Comfy processes while streaming their logs via tee
 sleep 1
-echo "Tailing logs (jupyter/comfy/download)"
-# Use tail -F so new logs are followed
-tail -F "$LOGDIR/jupyter.log" "$LOGDIR/comfy.log" "$LOGDIR/download.log" || tail -F "$LOGDIR/jupyter.log" "$LOGDIR/comfy.log" || tail -F "$LOGDIR/jupyter.log"
+echo "Startup complete. PIDs: Jupyter=$JUPYTER_PID Comfy=${COMFY_PID-unknown}. Streaming logs..."
+wait $JUPYTER_PID ${COMFY_PID:-} || true
