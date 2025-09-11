@@ -205,7 +205,7 @@ if [ "${PERSIST_VENV-}" = "true" ]; then
     python3 -m venv "$VENV_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || true
     "$VENV_DIR/bin/pip" install --upgrade pip setuptools wheel >> "$LOGDIR/jupyter.log" 2>&1 || true
     # Install minimal runtime tools in the persistent venv so jupyter/comfy cli are available
-    "$VENV_DIR/bin/pip" install comfy-cli jupyterlab huggingface-hub || true
+    "$VENV_DIR/bin/pip" install comfy-cli jupyterlab huggingface-hub gdown || true
   fi
   # Ensure ComfyUI python requirements are installed into the persistent venv
   if [ -f "/ComfyUI/requirements.txt" ]; then
@@ -242,10 +242,13 @@ if [ "$?" -ne 0 ]; then
   fi
 fi
 
-echo "Jupyter will use workspace dir: $WORKSPACE_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || true
-echo "Starting JupyterLab on 0.0.0.0:8888 (notebook-dir=$WORKSPACE_DIR)" >> "$LOGDIR/jupyter.log" 2>&1 || true
+# Force JupyterLab to open in /ComfyUI (requested) regardless of workspace path
+JUPYTER_DIR="/ComfyUI"
+mkdir -p "$JUPYTER_DIR" || true
+echo "Jupyter will use directory: $JUPYTER_DIR" >> "$LOGDIR/jupyter.log" 2>&1 || true
+echo "Starting JupyterLab on 0.0.0.0:8888 (notebook-dir=$JUPYTER_DIR)" >> "$LOGDIR/jupyter.log" 2>&1 || true
 # Disable token for convenience inside controlled environments like Runpod; remove --ServerApp.token='' if you want a token
-"${PYTHON}" -m jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token='' --LabApp.allow_origin='*' --ServerApp.allow_remote_access=True --NotebookApp.notebook_dir="$WORKSPACE_DIR" --allow-root > "$LOGDIR/jupyter.log" 2>&1 &
+"${PYTHON}" -m jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token='' --LabApp.allow_origin='*' --ServerApp.allow_remote_access=True --NotebookApp.notebook_dir="$JUPYTER_DIR" --allow-root > "$LOGDIR/jupyter.log" 2>&1 &
 
 # Start ComfyUI - try comfy CLI first, fall back to main.py
 STARTED=0
