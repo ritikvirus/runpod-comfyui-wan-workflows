@@ -286,32 +286,13 @@ done
 
 # Register florence2 path for ComfyUI-Florence2 via extra_model_paths.yaml
 EXTRA_YAML="$COMFY_ROOT/extra_model_paths.yaml"
-python - <<PY 2>/dev/null || true
-import os, yaml
-extra = """$EXTRA_YAML"""
-flo_dir = """$FLO_DIR"""
-data = {}
-if os.path.exists(extra):
-    try:
-        with open(extra, 'r') as f:
-            data = yaml.safe_load(f) or {}
-    except Exception:
-        data = {}
-# ComfyUI expects values as newline-delimited strings, not lists
-existing = data.get('florence2', '')
-if isinstance(existing, str) and existing.strip():
-    paths = [p for p in existing.split('\n') if p.strip()]
-elif isinstance(existing, list):
-    paths = [p for p in existing if isinstance(p, str) and p.strip()]
-else:
-    paths = []
-if flo_dir not in paths:
-    paths.append(flo_dir)
-data['florence2'] = "\n".join(paths)
-with open(extra, 'w') as f:
-    yaml.safe_dump(data, f, sort_keys=False)
-print('Registered florence2 path (newline string) ->', flo_dir)
-PY
+mkdir -p "$(dirname "$EXTRA_YAML")"
+# Write minimal YAML mapping with a single multiline scalar value
+{
+  echo "florence2: |"
+  echo "  $FLO_DIR"
+} > "$EXTRA_YAML"
+echo "Registered florence2 path -> $FLO_DIR (YAML scalar)"
 
 # 2) Joy Caption Two suggested LLMs (seed into HF cache so first run is faster)
 LLM_MODELS=(
