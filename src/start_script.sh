@@ -422,34 +422,9 @@ if [ -n "$ADD_REQ_FILE" ] && [ -f "$ADD_REQ_FILE" ]; then
 else
   echo "No additional_requirements.txt found to install" >> "$LOGDIR/comfy.log" 2>&1 || true
 fi
-if command -v comfy >/dev/null 2>&1 || [ -x "${VENV_BIN-}/comfy" ]; then
-  echo "Starting ComfyUI via comfy CLI (listen=${COMFY_HOST}:${COMFY_PORT})" | tee -a "$LOGDIR/comfy.log" 1>/dev/null 2>&1 || true
-  # Try comfy CLI from venv if available; start in background and append logs
-  cd /ComfyUI 2>/dev/null || true
-  if [ -x "${VENV_BIN-}/comfy" ]; then
-    stdbuf -oL -eL "${VENV_BIN}/comfy" --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
-  else
-    stdbuf -oL -eL comfy --workspace /ComfyUI run --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
-  fi
-  COMFY_PID=$!
-  # Give comfy a moment to initialize and write logs
-  sleep 4
-  # If comfy didn't start a server, try main.py
-  if ! grep -q "Serving" "$LOGDIR/comfy.log" 2>/dev/null; then
-    if [ -f "/ComfyUI/main.py" ]; then
-      echo "Fallback: starting ComfyUI via python main.py on ${COMFY_HOST}:${COMFY_PORT}" >> "$LOGDIR/comfy.log"
-      cd /ComfyUI || true
-      stdbuf -oL -eL "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
-      COMFY_PID=$!
-      STARTED=1
-    else
-      echo "ComfyUI not found at /ComfyUI; container may be misbuilt" >> "$LOGDIR/comfy.log"
-    fi
-  else
-    STARTED=1
-  fi
-elif [ -f "/ComfyUI/main.py" ]; then
-  echo "Starting ComfyUI via python main.py" >> "$LOGDIR/comfy.log"
+# Always start ComfyUI via python main.py to avoid interactive CLI prompts
+if [ -f "/ComfyUI/main.py" ]; then
+  echo "Starting ComfyUI via python main.py (listen=${COMFY_HOST}:${COMFY_PORT})" >> "$LOGDIR/comfy.log"
   cd /ComfyUI || true
   stdbuf -oL -eL "${PYTHON}" main.py --listen "$COMFY_HOST" --port "$COMFY_PORT" 2>&1 | tee -a "$LOGDIR/comfy.log" &
   COMFY_PID=$!

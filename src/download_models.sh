@@ -231,15 +231,36 @@ pip install -q -U "huggingface_hub[cli]" || true
 echo "[JoyCaption] Step 3/5: download Space assets (cgrkzexw-599808/*)"
 TMP_JOY="/tmp/joycaption_alpha_two"
 rm -rf "$TMP_JOY" && mkdir -p "$TMP_JOY"
-huggingface-cli download fancyfeast/joy-caption-alpha-two \
-  --repo-type space \
-  --include "cgrkzexw-599808/*" \
-  --local-dir "$TMP_JOY" \
-  --resume-download --quiet || true
+# Prefer new 'hf download', fallback to legacy 'huggingface-cli download'
+if command -v hf >/dev/null 2>&1; then
+  hf download fancyfeast/joy-caption-alpha-two \
+    --repo-type space \
+    --include "cgrkzexw-599808/*" \
+    --local-dir "$TMP_JOY" \
+    --resume-download >/dev/null 2>&1 || true
+else
+  huggingface-cli download fancyfeast/joy-caption-alpha-two \
+    --repo-type space \
+    --include "cgrkzexw-599808/*" \
+    --local-dir "$TMP_JOY" \
+    --resume-download --quiet || true
+fi
+
+# If the expected folder isn't present, try a generic Space snapshot and locate files dynamically
+if [ ! -d "$TMP_JOY/cgrkzexw-599808" ] || [ ! -f "$TMP_JOY/cgrkzexw-599808/clip_model.pt" ]; then
+  echo "[JoyCaption] Expected subfolder not found; attempting full Space snapshot and dynamic locate"
+  hf_snapshot_dl "fancyfeast/joy-caption-alpha-two" "$TMP_JOY" "space"
+fi
 
 echo "[JoyCaption] Step 4/5: move files into $JOY_DIR"
-if [ -d "$TMP_JOY/cgrkzexw-599808" ]; then
-  cp -an "$TMP_JOY/cgrkzexw-599808/." "$JOY_DIR/" 2>/dev/null || true
+joy_src=""
+if [ -d "$TMP_JOY/cgrkzexw-599808" ] && [ -f "$TMP_JOY/cgrkzexw-599808/clip_model.pt" ]; then
+  joy_src="$TMP_JOY/cgrkzexw-599808"
+else
+  joy_src=$(find "$TMP_JOY" -type f -name clip_model.pt -printf '%h\n' -quit 2>/dev/null || true)
+fi
+if [ -n "$joy_src" ]; then
+  cp -an "$joy_src/." "$JOY_DIR/" 2>/dev/null || true
 fi
 
 echo "[JoyCaption] Step 5/5: verify contents"
@@ -276,12 +297,20 @@ if os.path.exists(extra):
             data = yaml.safe_load(f) or {}
     except Exception:
         data = {}
-data.setdefault('florence2', [])
-if flo_dir not in data['florence2']:
-    data['florence2'].append(flo_dir)
+# ComfyUI expects values as newline-delimited strings, not lists
+existing = data.get('florence2', '')
+if isinstance(existing, str) and existing.strip():
+    paths = [p for p in existing.split('\n') if p.strip()]
+elif isinstance(existing, list):
+    paths = [p for p in existing if isinstance(p, str) and p.strip()]
+else:
+    paths = []
+if flo_dir not in paths:
+    paths.append(flo_dir)
+data['florence2'] = "\n".join(paths)
 with open(extra, 'w') as f:
     yaml.safe_dump(data, f, sort_keys=False)
-print('Registered florence2 path ->', flo_dir)
+print('Registered florence2 path (newline string) ->', flo_dir)
 PY
 
 # 2) Joy Caption Two suggested LLMs (seed into HF cache so first run is faster)
