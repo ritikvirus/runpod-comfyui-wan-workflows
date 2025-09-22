@@ -284,15 +284,7 @@ for repo in "${FLO_MODELS[@]}"; do
   hf_snapshot_dl "$repo" "$FLO_DIR/$repo" "model"
 done
 
-# Register florence2 path for ComfyUI-Florence2 via extra_model_paths.yaml
-EXTRA_YAML="$COMFY_ROOT/extra_model_paths.yaml"
-mkdir -p "$(dirname "$EXTRA_YAML")"
-# Write minimal YAML mapping with a single multiline scalar value
-{
-  echo "florence2: |"
-  echo "  $FLO_DIR"
-} > "$EXTRA_YAML"
-echo "Registered florence2 path -> $FLO_DIR (YAML scalar)"
+# Skipping extra_model_paths.yaml modifications; models are placed directly in /ComfyUI/models
 
 # 2) Joy Caption Two suggested LLMs (seed into HF cache so first run is faster)
 LLM_MODELS=(
