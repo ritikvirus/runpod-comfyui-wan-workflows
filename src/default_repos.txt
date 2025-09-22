@@ -42,3 +42,7 @@ https://github.com/giriss/comfy-image-saver.git
 https://github.com/city96/ComfyUI-GGUF.git
 https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git
 https://github.com/TinyTerra/ComfyUI_tinyterraNodes.git
+https://github.com/ltdrdata/ComfyUI-Inspire-Pack.git
+https://github.com/AIGODLIKE/AIGODLIKE-ComfyUI-Translation.git
+https://github.com/Pixelailabs/Save_Florence2_Bulk_Prompts.git
+https://github.com/EvilBT/ComfyUI_SLK_joy_caption_two.git

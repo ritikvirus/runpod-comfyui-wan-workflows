@@ -15,7 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         python3.12 python3.12-venv python3.12-dev \
-        python3-pip curl ffmpeg ninja-build git aria2 git-lfs wget vim \
+        python3-pip curl ffmpeg ninja-build git aria2 git-lfs wget vim unzip \
         libgl1 libglib2.0-0 build-essential gcc ca-certificates && \
     ln -sf /usr/bin/python3.12 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip && \
@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install pyyaml gdown triton comfy-cli jupyterlab jupyterlab-lsp \
         jupyter-server jupyter-server-terminals ipykernel jupyterlab_code_formatter \
-        huggingface-hub
+        huggingface-hub transformers accelerate
 
 # Install ComfyUI into /ComfyUI via git and install its requirements
 RUN git lfs install && \
@@ -67,7 +67,9 @@ COPY workflows/ /workspace/ComfyUI/workflows/
 COPY src/fetch_nodes.py /usr/local/bin/fetch_nodes.py
 COPY src/fetch_nodes.py /workspace/src/fetch_nodes.py
 COPY src/start_script.sh /start_script.sh
-RUN chmod +x /start_script.sh /usr/local/bin/fetch_nodes.py /usr/local/bin/default_repos.txt /workspace/src/default_repos.txt || true
+COPY src/download_models.sh /workspace/src/download_models.sh
+COPY src/download_models.sh /download_models.sh
+RUN chmod +x /start_script.sh /usr/local/bin/fetch_nodes.py /usr/local/bin/default_repos.txt /workspace/src/default_repos.txt /workspace/src/download_models.sh /download_models.sh || true
 
 # Expose ports
 EXPOSE 8188 8888

@@ -1,0 +1,676 @@
+{
+  "id": "51ea9cd8-b796-4629-bd41-f00b70cb3fee",
+  "revision": 0,
+  "last_node_id": 26,
+  "last_link_id": 23,
+  "nodes": [
+    {
+      "id": 5,
+      "type": "DownloadAndLoadFlorence2Model",
+      "pos": [
+        716.5789184570312,
+        218.3859405517578
+      ],
+      "size": [
+        315,
+        130
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "lora",
+          "shape": 7,
+          "type": "PEFTLORA",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "florence2_model",
+          "type": "FL2MODEL",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-florence2",
+        "ver": "00b63382966a444a9fefacb65b8deb188d12a458",
+        "Node name for S&R": "DownloadAndLoadFlorence2Model",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "microsoft/Florence-2-base",
+        "fp16",
+        "eager",
+        false
+      ]
+    },
+    {
+      "id": 4,
+      "type": "Florence2Run",
+      "pos": [
+        711,
+        393
+      ],
+      "size": [
+        400,
+        364
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "name": "florence2_model",
+          "type": "FL2MODEL",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "slot_index": 1,
+          "links": null
+        },
+        {
+          "name": "caption",
+          "type": "STRING",
+          "slot_index": 2,
+          "links": [
+            14
+          ]
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-florence2",
+        "ver": "00b63382966a444a9fefacb65b8deb188d12a458",
+        "Node name for S&R": "Florence2Run",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "",
+        "more_detailed_caption",
+        true,
+        false,
+        1024,
+        3,
+        true,
+        "",
+        807373030405079,
+        "randomize"
+      ]
+    },
+    {
+      "id": 16,
+      "type": "SaveTextFlorence2",
+      "pos": [
+        1175.33251953125,
+        353.03253173828125
+      ],
+      "size": [
+        400,
+        208
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "processed_text",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "Pixelailabs/Save_Florence2_Bulk_Prompts",
+        "ver": "4d8229d3eb0accf3482013500bed385f93407140",
+        "Node name for S&R": "SaveTextFlorence2",
+        "ue_properties": {
+          "widget_ue_connectable": {
+            "file": true,
+            "enable_replacement": true,
+            "image_style": true,
+            "gender_age_replacement": true,
+            "lora_trigger": true,
+            "negative_prompt_text": true
+          },
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "output.txt",
+        true,
+        "Instagram photo of",
+        "woman with a long voluminous rose gold hair, brown eyes,",
+        "Instareal, OHWX, l3n0v0,",
+        ""
+      ]
+    },
+    {
+      "id": 1,
+      "type": "LoadImageListFromDir //Inspire",
+      "pos": [
+        302.9822998046875,
+        459.7893981933594
+      ],
+      "size": [
+        315,
+        194
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "shape": 6,
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "MASK",
+          "shape": 6,
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "name": "FILE PATH",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-inspire-pack",
+        "ver": "1.21.0",
+        "Node name for S&R": "LoadImageListFromDir //Inspire",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "X:\\training\\Batch Images",
+        0,
+        0,
+        false,
+        "None"
+      ]
+    },
+    {
+      "id": 21,
+      "type": "LoadImageListFromDir //Inspire",
+      "pos": [
+        301.7673034667969,
+        -296.03936767578125
+      ],
+      "size": [
+        315,
+        194
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "shape": 6,
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            16
+          ]
+        },
+        {
+          "name": "MASK",
+          "shape": 6,
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "name": "FILE PATH",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-inspire-pack",
+        "ver": "1.21.0",
+        "Node name for S&R": "LoadImageListFromDir //Inspire",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "/workspace/Batch Processing/ashley_dupont",
+        0,
+        0,
+        false,
+        "None"
+      ]
+    },
+    {
+      "id": 18,
+      "type": "Joy_caption_two_advanced",
+      "pos": [
+        691.2251586914062,
+        -280.0127868652344
+      ],
+      "size": [
+        270.2749938964844,
+        242
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "joy_two_pipeline",
+          "type": "JoyTwoPipeline",
+          "link": 15
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 16
+        },
+        {
+          "name": "extra_options",
+          "type": "Extra_Options",
+          "link": 23
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            22
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_slk_joy_caption_two",
+        "ver": "0.0.8",
+        "Node name for S&R": "Joy_caption_two_advanced",
+        "ue_properties": {
+          "widget_ue_connectable": {
+            "caption_type": true,
+            "caption_length": true,
+            "name": true,
+            "custom_prompt": true,
+            "low_vram": true,
+            "top_p": true,
+            "temperature": true
+          },
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Descriptive",
+        "long",
+        "",
+        "",
+        false,
+        0.9,
+        0.6
+      ]
+    },
+    {
+      "id": 17,
+      "type": "Joy_caption_two_load",
+      "pos": [
+        676.3001708984375,
+        -397.3697509765625
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "JoyTwoPipeline",
+          "type": "JoyTwoPipeline",
+          "links": [
+            15
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_slk_joy_caption_two",
+        "ver": "0.0.8",
+        "Node name for S&R": "Joy_caption_two_load",
+        "ue_properties": {
+          "widget_ue_connectable": {
+            "model": true
+          },
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "John6666/Llama-3.1-8B-Lexi-Uncensored-V2-nf4"
+      ]
+    },
+    {
+      "id": 26,
+      "type": "Joy_extra_options",
+      "pos": [
+        404.093994140625,
+        -32.34762191772461
+      ],
+      "size": [
+        1021.3125,
+        442
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Extra_Options",
+          "type": "Extra_Options",
+          "links": [
+            23
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_slk_joy_caption_two",
+        "ver": "0.0.8",
+        "Node name for S&R": "Joy_extra_options",
+        "ue_properties": {
+          "widget_ue_connectable": {
+            "If there is a person/character in the image you must refer to them as {name}.": true,
+            "Do NOT include information about people/characters that cannot be changed (like ethnicity, gender, etc), but do still include changeable attributes (like hair style).": true,
+            "Include information about lighting.": true,
+            "Include information about camera angle.": true,
+            "Include information about whether there is a watermark or not.": true,
+            "Include information about whether there are JPEG artifacts or not.": true,
+            "If it is a photo you MUST include information about what camera was likely used and details such as aperture, shutter speed, ISO, etc.": true,
+            "Do NOT include anything sexual; keep it PG.": true,
+            "Do NOT mention the image's resolution.": true,
+            "You MUST include information about the subjective aesthetic quality of the image from low to very high.": true,
+            "Include information on the image's composition style, such as leading lines, rule of thirds, or symmetry.": true,
+            "Do NOT mention any text that is in the image.": true,
+            "Specify the depth of field and whether the background is in focus or blurred.": true,
+            "If applicable, mention the likely use of artificial or natural lighting sources.": true,
+            "Do NOT use any ambiguous language.": true,
+            "Include whether the image is sfw, suggestive, or nsfw.": true,
+            "ONLY describe the most important elements of the image.": true
+          },
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "id": 20,
+      "type": "Fast Groups Bypasser (rgthree)",
+      "pos": [
+        -42.428871154785156,
+        -469.7621154785156
+      ],
+      "size": [
+        237.64999389648438,
+        106
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "OPT_CONNECTION",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "properties": {
+        "matchColors": "",
+        "matchTitle": "",
+        "showNav": true,
+        "showAllGraphs": true,
+        "sort": "position",
+        "customSortAlphabet": "",
+        "toggleRestriction": "default",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 22,
+      "type": "SaveTextFlorence2",
+      "pos": [
+        1006.0969848632812,
+        -338.9522399902344
+      ],
+      "size": [
+        400,
+        208
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 22
+        }
+      ],
+      "outputs": [
+        {
+          "name": "processed_text",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "Pixelailabs/Save_Florence2_Bulk_Prompts",
+        "ver": "4d8229d3eb0accf3482013500bed385f93407140",
+        "Node name for S&R": "SaveTextFlorence2",
+        "ue_properties": {
+          "widget_ue_connectable": {
+            "file": true,
+            "enable_replacement": true,
+            "image_style": true,
+            "gender_age_replacement": true,
+            "lora_trigger": true,
+            "negative_prompt_text": true
+          },
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "output.txt",
+        true,
+        "Instagram photo of",
+        "woman with a long voluminous rose gold hair, brown eyes,",
+        "Instareal, OHWX, l3n0v0,",
+        ""
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      5,
+      0,
+      4,
+      1,
+      "FL2MODEL"
+    ],
+    [
+      2,
+      1,
+      0,
+      4,
+      0,
+      "IMAGE"
+    ],
+    [
+      14,
+      4,
+      2,
+      16,
+      0,
+      "STRING"
+    ],
+    [
+      15,
+      17,
+      0,
+      18,
+      0,
+      "JoyTwoPipeline"
+    ],
+    [
+      16,
+      21,
+      0,
+      18,
+      1,
+      "IMAGE"
+    ],
+    [
+      22,
+      18,
+      0,
+      22,
+      0,
+      "STRING"
+    ],
+    [
+      23,
+      26,
+      0,
+      18,
+      2,
+      "Extra_Options"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Florence 2 Batch Prompt Generator",
+      "bounding": [
+        232,
+        82,
+        1510,
+        756
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "Joy Caption Two Batch Processingf",
+      "bounding": [
+        237.36233520507812,
+        -504.3403625488281,
+        1240.4591064453125,
+        551.6253662109375
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.8769226950000035,
+      "offset": [
+        -8.163761665971098,
+        525.8916934408206
+      ]
+    },
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "frontendVersion": "1.23.4",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

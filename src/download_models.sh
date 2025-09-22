@@ -167,6 +167,149 @@ fi
 
 echo "Mandatory downloads finished. Now processing additional MODELS/MODELS_FILE if provided."
 
+# ------------------------------------------------------------
+# JoyCaptionAlpha Two + Florence2 + SigLIP bootstrap (idempotent)
+# ------------------------------------------------------------
+# This section uses Hugging Face Hub's Python API to snapshot specific repos
+# into the expected ComfyUI folder structure so the related custom nodes
+# (e.g., Joy Caption Two and ComfyUI-Florence2) work out of the box.
+#
+# Note: We support both HF_TOKEN and HUGGINGFACE_TOKEN environment variables.
+
+# Resolve COMFY_ROOT from above and set key dirs
+HF_TOKEN_EFFECTIVE=${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}
+HF_HOME_DIR=${HF_HOME:-"$COMFY_ROOT/hf-cache"}
+export HF_HOME="$HF_HOME_DIR"
+
+JOY_DIR="$COMFY_ROOT/models/Joy_caption_two"
+FLO_DIR="$COMFY_ROOT/models/florence2"
+CLIP_DIR="$COMFY_ROOT/models/clip/siglip-so400m-patch14-384"
+LLM_DIR="$COMFY_ROOT/models/LLM"
+
+mkdir -p "$JOY_DIR" "$FLO_DIR" "$CLIP_DIR" "$LLM_DIR"
+
+# Helper: Python-based snapshot download with optional repo_type and allow_patterns
+hf_snapshot_dl() {
+  local repo_id="$1" dest_dir="$2" repo_type="${3:-model}" allow_patterns="${4:-}"
+  mkdir -p "$dest_dir"
+  python - <<PY 2>/dev/null || true
+from huggingface_hub import snapshot_download
+import os
+repo_id = """$repo_id"""
+dest_dir = """$dest_dir"""
+repo_type = """$repo_type"""
+allow_patterns = """$allow_patterns""".strip() or None
+hf_token = os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_TOKEN') or None
+home = os.environ.get('HF_HOME')
+kwargs = {
+    'repo_id': repo_id,
+    'repo_type': repo_type,
+    'local_dir': dest_dir,
+    'local_dir_use_symlinks': False,
+}
+if allow_patterns:
+    kwargs['allow_patterns'] = [p.strip() for p in allow_patterns.split(',') if p.strip()]
+if home:
+    kwargs['cache_dir'] = home
+if hf_token:
+    kwargs['token'] = hf_token
+try:
+    path = snapshot_download(**kwargs)
+    print('Downloaded', repo_id, '->', dest_dir)
+except Exception as e:
+    print('WARN: snapshot_download failed for', repo_id, 'error=', e)
+PY
+}
+
+# 0) Joy Caption Two base assets from the Space (exact steps, with status)
+echo "[JoyCaption] Step 1/5: ensure destination folder (case-sensitive) -> $JOY_DIR"
+mkdir -p "$JOY_DIR"
+
+echo "[JoyCaption] Step 2/5: ensure HF CLI is available"
+pip install -q -U "huggingface_hub[cli]" || true
+
+echo "[JoyCaption] Step 3/5: download Space assets (cgrkzexw-599808/*)"
+TMP_JOY="/tmp/joycaption_alpha_two"
+rm -rf "$TMP_JOY" && mkdir -p "$TMP_JOY"
+huggingface-cli download fancyfeast/joy-caption-alpha-two \
+  --repo-type space \
+  --include "cgrkzexw-599808/*" \
+  --local-dir "$TMP_JOY" \
+  --resume-download --quiet || true
+
+echo "[JoyCaption] Step 4/5: move files into $JOY_DIR"
+if [ -d "$TMP_JOY/cgrkzexw-599808" ]; then
+  cp -an "$TMP_JOY/cgrkzexw-599808/." "$JOY_DIR/" 2>/dev/null || true
+fi
+
+echo "[JoyCaption] Step 5/5: verify contents"
+ls -lh "$JOY_DIR" 2>/dev/null || true
+
+# 1) Florence-2 model family (download into subfolders under models/florence2)
+FLO_MODELS=(
+  "microsoft/Florence-2-base"
+  "microsoft/Florence-2-base-ft"
+  "microsoft/Florence-2-large"
+  "HuggingFaceM4/Florence-2-DocVQA"
+  "thwri/CogFlorence-2.1-Large"
+  "thwri/CogFlorence-2.2-Large"
+  "gokaygokay/Florence-2-Flux-Large"
+  "gokaygokay/Florence-2-SD3-Captioner"
+  "MiaoshouAI/Florence-2-base-PromptGen-v1.5"
+  "MiaoshouAI/Florence-2-large-PromptGen-v2.0"
+  "PJMixers-Images/Florence-2-base-Castollux-v0.5"
+)
+for repo in "${FLO_MODELS[@]}"; do
+  hf_snapshot_dl "$repo" "$FLO_DIR/$repo" "model"
+done
+
+# Register florence2 path for ComfyUI-Florence2 via extra_model_paths.yaml
+EXTRA_YAML="$COMFY_ROOT/extra_model_paths.yaml"
+python - <<PY 2>/dev/null || true
+import os, yaml
+extra = """$EXTRA_YAML"""
+flo_dir = """$FLO_DIR"""
+data = {}
+if os.path.exists(extra):
+    try:
+        with open(extra, 'r') as f:
+            data = yaml.safe_load(f) or {}
+    except Exception:
+        data = {}
+data.setdefault('florence2', [])
+if flo_dir not in data['florence2']:
+    data['florence2'].append(flo_dir)
+with open(extra, 'w') as f:
+    yaml.safe_dump(data, f, sort_keys=False)
+print('Registered florence2 path ->', flo_dir)
+PY
+
+# 2) Joy Caption Two suggested LLMs (seed into HF cache so first run is faster)
+LLM_MODELS=(
+  "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit"
+  "unsloth/Meta-Llama-3.1-8B-Instruct"
+  "John6666/Llama-3.1-8B-Lexi-Uncensored-V2-nf4"
+  "Orenguteng/Llama-3.1-8B-Lexi-Uncensored-V2"
+)
+for repo in "${LLM_MODELS[@]}"; do
+  # Use HF cache dir; create a stable local_dir under cache
+  cache_target="$HF_HOME_DIR/models--${repo//\//--}"
+  hf_snapshot_dl "$repo" "$cache_target" "model"
+done
+
+# 3) SigLIP vision encoder for Joy Caption Two
+hf_snapshot_dl "google/siglip-so400m-patch14-384" "$CLIP_DIR" "model"
+
+# 4) Quick verification (non-fatal)
+need_fix=0
+for f in clip_model.pt image_adapter.pt config.yaml; do
+  if [ ! -f "$JOY_DIR/$f" ]; then echo "[JoyCaption] MISSING $JOY_DIR/$f"; need_fix=1; fi
+done
+if [ ! -d "$JOY_DIR/text_model" ]; then echo "[JoyCaption] MISSING $JOY_DIR/text_model"; need_fix=1; fi
+if [ "$need_fix" -eq 0 ]; then
+  echo "Joy Caption Two base files present."
+fi
+
 # Load models from file if provided
 if [ -n "${MODELS_FILE-}" ] && [ -f "${MODELS_FILE}" ]; then
   echo "Reading models from file: $MODELS_FILE"
