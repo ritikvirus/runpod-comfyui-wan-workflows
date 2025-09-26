@@ -125,6 +125,7 @@ MANDATORY_DOWNLOADS=(
   "ComfyUI/models/flux/flux.1_dev-jasperai_control_upscaler.safetensors|https://huggingface.co/jasperai/Flux.1-dev-Controlnet-Upscaler/resolve/main/diffusion_pytorch_model.safetensors?download=true|true"
   "ComfyUI/models/text_encoders/t5xxl_fp16.safetensors|https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors?download=true|true"
   "ComfyUI/models/text_encoders/clip_l.safetensors|https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors?download=true|true"
+  "ComfyUI/models/text_encoders/umt5_xxl_fp16.safetensors|https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp16.safetensors?download=true|true"
   "ComfyUI/models/clip_vision/sigclip_vision_patch14_384.safetensors|https://huggingface.co/Comfy-Org/sigclip_vision_384/resolve/main/sigclip_vision_patch14_384.safetensors?download=true|true"
   "ComfyUI/models/diffusion_models/Wan2_2-T2V-A14B_HIGH_fp8_e4m3fn_scaled_KJ.safetensors|https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/T2V/Wan2_2-T2V-A14B-HIGH_fp8_e4m3fn_scaled_KJ.safetensors?download=true|true"
   "/ComfyUI/models/ultralytics/bbox/face_yolov8m.pt|https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt?download=true|true"
